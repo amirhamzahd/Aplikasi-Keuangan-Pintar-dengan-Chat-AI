@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const accs = await prisma.account.findMany({where: {userId: '7720738b-abcb-48fd-9499-4e27b1e3cfea'}}); let t = 0; accs.forEach(a =, a.balance); t += a.balance;}); console.log('Total:', t); } main().finally(() = 

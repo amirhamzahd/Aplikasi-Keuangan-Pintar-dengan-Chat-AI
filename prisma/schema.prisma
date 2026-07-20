@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                String         @id @default(uuid())
+  email             String         @unique
+  name              String
+  password          String
+  isVerified        Boolean        @default(false)
+  verificationToken String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  monthlyCutoffDate Int            @default(1)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  
+  // Relasi
+  accounts          Account[]
+  categories        Category[]
+  transactions      Transaction[]
+  budgets           Budget[]
+  goals             Goal[]
+  subscriptions     Subscription[]
+  debts             Debt[]
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // cash, bank, ewallet
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  // Relasi dari tabel lain ke Account
+  transactionsFrom Transaction[]  @relation("AccountFrom")
+  transactionsTo   Transaction[]  @relation("AccountTo")
+  subscriptions    Subscription[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // income, expense
+  icon      String
+  color     String
+  isBuiltIn Boolean  @default(false)
+  
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  amount      Float
+  date        DateTime @default(now())
+  description String
+  type        String   // income, expense, transfer
+  category    String
+  tags        String   // Disimpan sebagai JSON string list atau teks koma
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  account     Account  @relation("AccountFrom", fields: [accountId], references: [id], onDelete: Cascade)
+  accountId   String
+  
+  toAccount   Account? @relation("AccountTo", fields: [toAccountId], references: [id], onDelete: SetNull)
+  toAccountId String?
+}
+
+model Budget {
+  id        String   @id @default(uuid())
+  category  String
+  amount    Float
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  @@unique([userId, category])
+}
+
+model Goal {
+  id         String   @id @default(uuid())
+  name       String
+  target     Float
+  current    Float    @default(0)
+  targetDate DateTime
+  createdAt  DateTime @default(now())
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+}
+
+model Subscription {
+  id          String   @id @default(uuid())
+  name        String
+  amount      Float
+  cycle       String   // monthly, yearly
+  category    String
+  startDate   DateTime
+  nextPayment DateTime
+  isActive    Boolean  @default(true)
+  
+  account     Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accountId   String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+}
+
+model Debt {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // give, take
+  amount    Float
+  remaining Float
+  dueDate   DateTime
+  status    String   // active, paid
+  createdAt DateTime @default(now())
+  accountId String?
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+}
