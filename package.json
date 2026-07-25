@@ -9,23 +9,27 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@google/genai": "^2.10.0",
     "@prisma/client": "^5.22.0",
+    "@react-oauth/google": "^0.13.5",
     "@types/nodemailer": "^8.0.1",
-    "canvas-confetti": "^1.9.4",
+    "bcryptjs": "^3.0.3",
     "framer-motion": "^12.41.0",
+    "google-auth-library": "^10.9.1",
+    "jose": "^6.2.4",
     "lucide-react": "^1.21.0",
+    "midtrans-client": "^1.4.3",
     "next": "16.2.9",
     "nodemailer": "^9.0.1",
     "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "recharts": "^3.9.0",
-    "tesseract.js": "^7.0.0"
+    "recharts": "^3.9.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/canvas-confetti": "^1.9.0",
+    "@types/midtrans-client": "^1.4.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

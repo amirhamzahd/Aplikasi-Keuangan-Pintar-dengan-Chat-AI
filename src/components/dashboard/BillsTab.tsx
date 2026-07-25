@@ -185,75 +185,111 @@ export function BillsTab() {
     <div className="space-y-6">
       
       {/* 1. Subscriptions & Bills */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Pembayaran Berulang & Langganan</h3>
-            <p className="text-xs text-slate-500">Tagihan bulanan yang terdeteksi otomatis</p>
+      <div className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Receipt size={24} />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-800">Tagihan & Langganan</h3>
+              <p className="text-xs font-medium text-slate-500 mt-0.5">Kelola pembayaran rutin Anda secara otomatis</p>
+            </div>
           </div>
-          <Button variant="secondary" size="sm" className="font-semibold text-xs py-1.5 px-3" onClick={() => setShowSubModal(true)}>
-            <Plus size={14} /> Langganan
+          <Button variant="primary" size="sm" className="font-bold whitespace-nowrap shadow-md shadow-primary/20 hover:shadow-primary/30" onClick={() => setShowSubModal(true)}>
+            <Plus size={16} className="mr-1.5" /> Tambah Langganan
           </Button>
         </div>
 
         {subscriptions.length === 0 ? (
-          <Card className="p-8 text-center text-slate-400">
-            <Receipt size={36} className="mx-auto mb-2 opacity-20" />
-            <p className="text-xs font-semibold">Tidak ada tagihan langganan aktif.</p>
-          </Card>
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+            <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+              <Receipt size={32} className="text-slate-300" />
+            </div>
+            <h4 className="text-sm font-extrabold text-slate-700 mb-1">Belum ada tagihan rutin</h4>
+            <p className="text-xs text-slate-500 max-w-xs">Tambahkan tagihan seperti internet, listrik, atau Netflix agar tidak lupa bayar.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {subscriptions.map((sub) => (
-              <Card key={sub.id} className="hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-4 !pt-4 flex flex-col gap-3">
-                  <div className="flex justify-between items-start gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {subscriptions.map((sub) => {
+              const cycleLabel = sub.billingCycle === 'weekly' ? 'Mingguan' : sub.billingCycle === 'monthly' ? 'Bulanan' : sub.billingCycle === 'yearly' ? 'Tahunan' : 'Manual';
+              const nextBillDate = new Date(sub.nextBilling);
+              const daysLeft = Math.ceil((nextBillDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+              const isDueSoon = daysLeft <= 3 && daysLeft >= 0;
+              const isOverdue = daysLeft < 0;
+
+              return (
+                <div key={sub.id} className="group relative bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                  {/* Status Badge */}
+                  {(isDueSoon || isOverdue) && (
+                    <div className={`absolute -top-2.5 -right-2.5 px-3 py-1 rounded-full text-[10px] font-extrabold shadow-sm border ${
+                      isOverdue ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+                    }`}>
+                      {isOverdue ? 'Terlewat' : 'Segera'}
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
-                        <BellRing size={16} />
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-600 shrink-0 group-hover:scale-110 transition-transform">
+                        <BellRing size={20} />
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-slate-800 line-clamp-1">{sub.name}</h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
-                          Tempo: {new Date(sub.nextBilling).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} - {sub.billingCycle === 'weekly' ? 'MINGGUAN' : sub.billingCycle === 'monthly' ? 'BULANAN' : sub.billingCycle === 'yearly' ? 'TAHUNAN' : 'TANGGAL MANUAL'}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{sub.category}</span>
+                          <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">{cycleLabel}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-sm font-bold text-slate-900">{formatIDR(sub.amount)}</span>
-                      <span className="block text-[9px] uppercase font-bold text-slate-400">{sub.category}</span>
                     </div>
                   </div>
                   
-                  <div className="flex justify-end gap-2 pt-2.5 border-t border-slate-100">
+                  <div className="mb-5 flex-1">
+                    <div className="text-[10px] font-semibold text-slate-400 mb-0.5">Nominal Tagihan</div>
+                    <div className="text-xl font-black text-slate-800 tracking-tight">{formatIDR(sub.amount)}</div>
+                    
+                    <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] font-bold text-slate-500">Jatuh Tempo</span>
+                        <span className={`text-[10px] font-extrabold ${isOverdue ? 'text-rose-600' : isDueSoon ? 'text-amber-600' : 'text-slate-700'}`}>
+                          {daysLeft === 0 ? 'Hari Ini' : daysLeft > 0 ? `${daysLeft} hari lagi` : `Lewat ${Math.abs(daysLeft)} hari`}
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-slate-700">
+                        {nextBillDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-4 border-t border-slate-100/80">
                     <button 
                       onClick={() => {
                         setPaySubId(sub.id);
                         setPaySubAccountId(accounts[0]?.id || '');
                         setShowPaySubModal(true);
                       }}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-slate-500 hover:text-success hover:bg-success/10 rounded-md transition cursor-pointer"
-                      title="Bayar Bulan Ini"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-success text-white text-xs font-bold rounded-xl hover:bg-emerald-600 active:scale-95 transition-all shadow-sm shadow-success/20"
                     >
-                      <Check size={12} /> Bayar
+                      <Check size={14} /> Bayar
                     </button>
                     <button 
                       onClick={() => handleOpenEditSub(sub)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-slate-500 hover:text-primary hover:bg-slate-100 rounded-md transition cursor-pointer"
-                      title="Edit Langganan"
+                      className="w-10 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-xl active:scale-95 transition-all"
+                      title="Edit"
                     >
-                      <Edit2 size={12} /> Edit
+                      <Edit2 size={14} />
                     </button>
                     <button 
                       onClick={() => handleDeleteSub(sub.id, sub.name)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-slate-500 hover:text-danger hover:bg-danger/10 rounded-md transition cursor-pointer"
-                      title="Hapus Langganan"
+                      className="w-10 flex items-center justify-center text-slate-400 hover:text-danger hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl active:scale-95 transition-all"
+                      title="Hapus"
                     >
-                      <Trash2 size={12} /> Hapus
+                      <Trash2 size={14} />
                     </button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

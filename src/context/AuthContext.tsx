@@ -10,6 +10,9 @@ export interface User {
   gender?: string;
   photo?: string;
   pin?: string;
+  isPremium?: boolean;
+  planType?: string;
+  planExpiredAt?: string;
 }
 
 interface AuthContextType {
@@ -17,6 +20,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (access_token: string) => Promise<{ success: boolean; error?: string }>;
   signup: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => void;
@@ -30,18 +34,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Load user session on start
+  // Load user session on start via API
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('aura_current_user');
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        const devicePin = localStorage.getItem(`device_pin_${parsed.id}`);
-        if (devicePin) parsed.pin = devicePin;
-        setUser(parsed);
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+          } else {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }
+    };
+    
+    checkAuth();
   }, []);
 
   // Authentication routing guard
@@ -51,10 +66,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const publicPaths = ['/auth/login', '/auth/signup', '/verify'];
     const isPublicPath = publicPaths.includes(pathname);
 
-    if (!user && !isPublicPath) {
+    if (!user && !isPublicPath && pathname !== '/pricing') {
       router.push('/auth/login');
-    } else if (user && isPublicPath) {
-      router.push('/dashboard');
+    } else if (user) {
+      const isNonePlan = !user.planType || user.planType === 'NONE';
+      
+      if (isPublicPath) {
+        router.push(isNonePlan ? '/pricing' : '/dashboard');
+      } else if (pathname.startsWith('/dashboard') && isNonePlan) {
+        router.push('/pricing');
+      }
     }
   }, [user, isLoading, pathname, router]);
 
@@ -76,15 +97,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: data.error || 'Terjadi kesalahan.' };
       }
 
-      const sessionUser: User = { id: data.user.id, name: data.user.name, email: data.user.email };
-      const devicePin = localStorage.getItem(`device_pin_${sessionUser.id}`);
-      if (devicePin) sessionUser.pin = devicePin;
-      
-      localStorage.setItem('aura_current_user', JSON.stringify(sessionUser));
-      setUser(sessionUser);
+      setUser(data.user);
       setIsLoading(false);
       
-      router.push('/dashboard');
+      if (data.user?.planType === 'NONE') {
+        router.push('/pricing');
+      } else {
+        router.push('/dashboard');
+      }
+      return { success: true };
+    } catch (err) {
+      setIsLoading(false);
+      return { success: false, error: 'Gagal menghubungi server.' };
+    }
+  };
+
+  // Google Login handler
+  const loginWithGoogle = async (access_token: string): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setIsLoading(false);
+        return { success: false, error: data.error || 'Terjadi kesalahan.' };
+      }
+
+      setUser(data.user);
+      setIsLoading(false);
+      
+      if (data.user?.planType === 'NONE') {
+        router.push('/pricing');
+      } else {
+        router.push('/dashboard');
+      }
       return { success: true };
     } catch (err) {
       setIsLoading(false);
@@ -111,8 +164,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setIsLoading(false);
-      // Pendaftaran berhasil, kembalikan response sukses agar UI menampilkan instruksi cek email.
-      // Kita tidak otomatis login, karena mereka harus verifikasi email dulu.
       return { success: true };
     } catch (err) {
       setIsLoading(false);
@@ -121,31 +172,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Logout handler
-  const logout = () => {
-    localStorage.removeItem('aura_current_user');
-    setUser(null);
+  const logout = async () => {
+    try {
+      // In a real app we would call /api/auth/logout to clear HttpOnly cookie
+      // For now we can just redirect and clear state, but we should clear cookie.
+      // Easiest is to just set user to null for now and force re-login. 
+      // If we implement /api/auth/logout it would be better.
+      setUser(null);
+      // Wait, deleting cookie from client is not possible if it's HttpOnly. 
+      // I should add a quick api route for logout or clear cookie on server side.
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch(e) {}
+    
     router.push('/auth/login');
   };
 
   // Update Profile
-  const updateProfile = (data: Partial<User>) => {
+  const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
+    
+    // Optimistic UI update
     const updatedUser = { ...user, ...data };
-    
-    if (data.pin !== undefined) {
-      if (data.pin) {
-        localStorage.setItem(`device_pin_${user.id}`, data.pin);
-      } else {
-        localStorage.removeItem(`device_pin_${user.id}`);
-      }
-    }
-    
     setUser(updatedUser);
-    localStorage.setItem('aura_current_user', JSON.stringify(updatedUser));
+
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        console.error('Failed to save profile to database');
+      }
+    } catch (err) {
+      console.error('Network error saving profile', err);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, loginWithGoogle, signup, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

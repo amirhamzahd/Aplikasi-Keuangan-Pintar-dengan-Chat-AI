@@ -1,249 +1,248 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { email, entity, action, data, id } = body;
-
-    if (!email || !entity || !action) {
-      return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+    const session = await getSession();
+    if (!session || !session.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: 'User tidak valid' }, { status: 403 });
+    const userId = session.id;
+
+    // Server-side check for Read-Only mode
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const isExpired = user.planExpiredAt ? new Date(user.planExpiredAt) < new Date() : false;
+    if (user.planType === 'NONE' || isExpired) {
+      return NextResponse.json({ error: 'Akun dalam mode Read-Only. Harap perpanjang langganan Anda.' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { entity, action, data, id } = body;
 
     let result;
-    const model = (prisma as any)[entity]; // e.g., prisma.transaction
 
-    if (!model) {
-      return NextResponse.json({ error: 'Entitas tidak ditemukan' }, { status: 400 });
-    }
-
-    // --- MANIPULASI DATA SEBELUM DISIMPAN ---
-    let payload = { ...data };
-
-    if (entity === 'user') {
-      if (payload.monthlyCutoffDate !== undefined) {
-        payload.monthlyCutoffDate = parseInt(payload.monthlyCutoffDate, 10);
-      }
-      if (payload.currentPeriodStart !== undefined) {
-        payload.currentPeriodStart = payload.currentPeriodStart ? new Date(payload.currentPeriodStart) : null;
-      }
-      if (payload.currentPeriodEnd !== undefined) {
-        payload.currentPeriodEnd = payload.currentPeriodEnd ? new Date(payload.currentPeriodEnd) : null;
-      }
-    }
-
-    // 1. Fix untuk AI Chat: Jika ada tags berbentuk Array, jadikan JSON String
-    if (entity === 'transaction' && payload.tags && Array.isArray(payload.tags)) {
-      payload.tags = JSON.stringify(payload.tags);
-    }
-
-    if (entity === 'transaction' && payload.date) {
-      payload.date = new Date(payload.date);
-    }
-
-    // 2. Fix untuk Format Tanggal MySQL dan Schema Mapping
-    if (entity === 'subscription') {
-      if (payload.billingCycle) {
-        payload.cycle = payload.billingCycle;
-        delete payload.billingCycle;
-      }
-      if (payload.nextBilling) {
-        payload.nextPayment = new Date(payload.nextBilling);
-        delete payload.nextBilling;
-      }
-      if (!payload.startDate) {
-        payload.startDate = new Date();
-      }
-    }
-
-    if (entity === 'debt') {
-      if (payload.person) {
-        payload.name = payload.person;
-        delete payload.person;
-      }
-      if (payload.dueDate) {
-        payload.dueDate = new Date(payload.dueDate);
-      } else {
-        payload.dueDate = new Date();
-      }
-      if (payload.type === 'debt' || payload.type === 'receivable') {
-        payload.type = payload.type === 'debt' ? 'take' : 'give';
-      }
-      if (typeof payload.remaining === 'undefined') {
-        payload.remaining = payload.amount;
-      }
-      if (!payload.status || payload.status === 'pending') {
-        payload.status = 'active';
-      }
-    }
-
-    if (entity === 'goal' && payload.targetDate) {
-      payload.targetDate = new Date(payload.targetDate);
-    }
-
-    // --- FUNGSI BANTUAN KALKULASI SALDO ---
-    const applyBalanceChange = async (tx: any, isRevert = false) => {
-      const multiplier = isRevert ? -1 : 1;
-      
-      if (tx.type === 'income') {
-        await prisma.account.update({
-          where: { id: tx.accountId },
-          data: { balance: { increment: tx.amount * multiplier } }
-        });
-      } else if (tx.type === 'expense') {
-        await prisma.account.update({
-          where: { id: tx.accountId },
-          data: { balance: { decrement: tx.amount * multiplier } }
-        });
-      } else if (tx.type === 'transfer' && tx.toAccountId) {
-        await prisma.account.update({
-          where: { id: tx.accountId },
-          data: { balance: { decrement: tx.amount * multiplier } }
-        });
-        await prisma.account.update({
-          where: { id: tx.toAccountId },
-          data: { balance: { increment: tx.amount * multiplier } }
-        });
-      }
-    };
-
-    const applyDebtBalanceChange = async (debt: any, actionType: 'CREATE' | 'PAY' | 'UNPAY' | 'DELETE_PENDING', customAmount?: number) => {
-      if (!debt.accountId) return;
-      
-      const amt = customAmount !== undefined ? customAmount : debt.amount;
-      let incrementValue = 0;
-      
-      if (debt.type === 'give' || debt.type === 'receivable') { // Piutang (We lend money)
-        if (actionType === 'CREATE') incrementValue = -amt;
-        if (actionType === 'PAY') incrementValue = amt;
-        if (actionType === 'UNPAY') incrementValue = -amt;
-        if (actionType === 'DELETE_PENDING') incrementValue = amt;
-      } else if (debt.type === 'take' || debt.type === 'debt') { // Hutang (We borrow money)
-        if (actionType === 'CREATE') incrementValue = amt;
-        if (actionType === 'PAY') incrementValue = -amt;
-        if (actionType === 'UNPAY') incrementValue = amt;
-        if (actionType === 'DELETE_PENDING') incrementValue = -amt;
-      }
-
-      if (incrementValue !== 0) {
-        await prisma.account.update({
-          where: { id: debt.accountId },
-          data: { balance: { increment: incrementValue } }
-        });
-      }
-    };
-
-    // --- EKSEKUSI AKSI ---
-    if (action === 'RESET_DATA') {
-      await prisma.$transaction([
-        prisma.transaction.deleteMany({ where: { userId: user.id } }),
-        prisma.account.deleteMany({ where: { userId: user.id } }),
-        prisma.budget.deleteMany({ where: { userId: user.id } }),
-        prisma.debt.deleteMany({ where: { userId: user.id } }),
-        prisma.goal.deleteMany({ where: { userId: user.id } }),
-        prisma.subscription.deleteMany({ where: { userId: user.id } }),
-        prisma.category.deleteMany({ where: { userId: user.id } }),
-      ]);
-      return NextResponse.json({ success: true, message: 'Data berhasil direset' });
-    }
-    
-    if (action === 'CREATE') {
-      result = await model.create({
-        data: {
-          ...payload,
-          userId: user.id,
+    switch (entity) {
+      case 'user':
+        if (action === 'UPDATE') {
+          result = await prisma.user.update({ where: { id: userId }, data });
+        } else if (action === 'RESET_DATA') {
+          // Careful with this in production!
+          await prisma.$transaction([
+            prisma.transaction.deleteMany({ where: { userId } }),
+            prisma.account.deleteMany({ where: { userId } }),
+            prisma.budget.deleteMany({ where: { userId } }),
+            prisma.goal.deleteMany({ where: { userId } }),
+            prisma.subscription.deleteMany({ where: { userId } }),
+            prisma.debt.deleteMany({ where: { userId } })
+          ]);
+          result = { success: true };
         }
-      });
-      
-      // Jika yang dibuat adalah transaksi, hitung saldonya!
-      if (entity === 'transaction') {
-        await applyBalanceChange(result, false);
-      }
-      if (entity === 'debt') {
-        await applyDebtBalanceChange(result, 'CREATE');
-      }
-      
-    } else if (action === 'UPDATE') {
-      if (!id) return NextResponse.json({ error: 'ID wajib untuk update' }, { status: 400 });
+        break;
 
-      // Jika update transaksi, kita harus mengembalikan saldo lama dulu, baru menerapkan saldo baru
-      if (entity === 'transaction') {
-        const oldTx = await model.findUnique({ where: { id } });
-        if (oldTx) {
-          await applyBalanceChange(oldTx, true); // Revert saldo lama
-        }
-      }
-
-      // Khusus Update Debt
-      let oldDebt = null;
-      if (entity === 'debt') {
-        oldDebt = await model.findUnique({ where: { id } });
-      }
-
-      result = await model.update({
-        where: { id },
-        data: payload
-      });
-
-      if (entity === 'transaction') {
-        await applyBalanceChange(result, false); // Terapkan saldo baru
-      }
-      
-      if (entity === 'debt' && oldDebt) {
-        const diff = oldDebt.amount - result.amount;
-        
-        // Handle amount change (e.g. partial payment or manual edit)
-        if (diff !== 0) {
-          if (diff > 0) {
-            await applyDebtBalanceChange(result, 'PAY', diff);
-          } else {
-            await applyDebtBalanceChange(result, 'CREATE', -diff);
+      case 'transaction':
+        if (action === 'CREATE') {
+          let categoryId = data.categoryId;
+          if (!categoryId && data.category) {
+            const cat = await prisma.category.findFirst({ where: { userId, name: data.category } });
+            if (cat) categoryId = cat.id;
+            else {
+               const fallbackCat = await prisma.category.findFirst({ where: { userId } });
+               if (fallbackCat) categoryId = fallbackCat.id;
+               else {
+                   const newCat = await prisma.category.create({
+                       data: { name: 'Lainnya', type: data.type || 'expense', icon: 'list', color: '#ccc', userId }
+                   });
+                   categoryId = newCat.id;
+               }
+            }
           }
+          
+          const cleanData = { ...data, categoryId, tags: Array.isArray(data.tags) ? data.tags.join(',') : (data.tags || '') };
+          delete cleanData.category;
+          
+          const queries = [];
+          queries.push(prisma.transaction.create({ data: { ...cleanData, userId } }));
+          
+          if (cleanData.type === 'expense') {
+            queries.push(prisma.account.update({ where: { id: cleanData.accountId, userId }, data: { balance: { decrement: cleanData.amount } } }));
+          } else if (cleanData.type === 'income') {
+            queries.push(prisma.account.update({ where: { id: cleanData.accountId, userId }, data: { balance: { increment: cleanData.amount } } }));
+          } else if (cleanData.type === 'transfer' && cleanData.toAccountId) {
+            queries.push(prisma.account.update({ where: { id: cleanData.accountId, userId }, data: { balance: { decrement: cleanData.amount } } }));
+            queries.push(prisma.account.update({ where: { id: cleanData.toAccountId, userId }, data: { balance: { increment: cleanData.amount } } }));
+          }
+          
+          const results = await prisma.$transaction(queries);
+          result = results[0];
+          
+        } else if (action === 'UPDATE') {
+          const cleanData = { ...data };
+          if (cleanData.tags && Array.isArray(cleanData.tags)) cleanData.tags = cleanData.tags.join(',');
+          if (cleanData.category && !cleanData.categoryId) {
+            const cat = await prisma.category.findFirst({ where: { userId, name: cleanData.category } });
+            if (cat) cleanData.categoryId = cat.id;
+            delete cleanData.category;
+          }
+          
+          const oldTx = await prisma.transaction.findUnique({ where: { id, userId } });
+          if (!oldTx) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+          
+          const queries = [];
+          
+          // 1. Reverse old transaction effect
+          if (oldTx.type === 'expense') {
+             queries.push(prisma.account.update({ where: { id: oldTx.accountId, userId }, data: { balance: { increment: oldTx.amount } } }));
+          } else if (oldTx.type === 'income') {
+             queries.push(prisma.account.update({ where: { id: oldTx.accountId, userId }, data: { balance: { decrement: oldTx.amount } } }));
+          } else if (oldTx.type === 'transfer' && oldTx.toAccountId) {
+             queries.push(prisma.account.update({ where: { id: oldTx.accountId, userId }, data: { balance: { increment: oldTx.amount } } }));
+             queries.push(prisma.account.update({ where: { id: oldTx.toAccountId, userId }, data: { balance: { decrement: oldTx.amount } } }));
+          }
+          
+          // 2. Apply new transaction effect
+          const newType = cleanData.type || oldTx.type;
+          const newAmount = cleanData.amount !== undefined ? cleanData.amount : oldTx.amount;
+          const newAccountId = cleanData.accountId || oldTx.accountId;
+          const newToAccountId = cleanData.toAccountId !== undefined ? cleanData.toAccountId : oldTx.toAccountId;
+          
+          if (newType === 'expense') {
+             queries.push(prisma.account.update({ where: { id: newAccountId, userId }, data: { balance: { decrement: newAmount } } }));
+          } else if (newType === 'income') {
+             queries.push(prisma.account.update({ where: { id: newAccountId, userId }, data: { balance: { increment: newAmount } } }));
+          } else if (newType === 'transfer' && newToAccountId) {
+             queries.push(prisma.account.update({ where: { id: newAccountId, userId }, data: { balance: { decrement: newAmount } } }));
+             queries.push(prisma.account.update({ where: { id: newToAccountId, userId }, data: { balance: { increment: newAmount } } }));
+          }
+          
+          queries.push(prisma.transaction.update({ where: { id, userId }, data: cleanData }));
+          
+          const results = await prisma.$transaction(queries);
+          result = results[results.length - 1];
+          
+        } else if (action === 'DELETE') {
+          const oldTx = await prisma.transaction.findUnique({ where: { id, userId } });
+          if (!oldTx) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+          
+          const queries = [];
+          
+          if (oldTx.type === 'expense') {
+             queries.push(prisma.account.update({ where: { id: oldTx.accountId, userId }, data: { balance: { increment: oldTx.amount } } }));
+          } else if (oldTx.type === 'income') {
+             queries.push(prisma.account.update({ where: { id: oldTx.accountId, userId }, data: { balance: { decrement: oldTx.amount } } }));
+          } else if (oldTx.type === 'transfer' && oldTx.toAccountId) {
+             queries.push(prisma.account.update({ where: { id: oldTx.accountId, userId }, data: { balance: { increment: oldTx.amount } } }));
+             queries.push(prisma.account.update({ where: { id: oldTx.toAccountId, userId }, data: { balance: { decrement: oldTx.amount } } }));
+          }
+          
+          queries.push(prisma.transaction.delete({ where: { id, userId } }));
+          
+          const results = await prisma.$transaction(queries);
+          result = results[results.length - 1];
         }
+        break;
 
-        // Handle full status toggle (without amount change)
-        if (oldDebt.status === 'active' && result.status === 'paid' && diff === 0) {
-          await applyDebtBalanceChange(result, 'PAY', result.amount);
-        } else if (oldDebt.status === 'paid' && result.status === 'active' && diff === 0) {
-          await applyDebtBalanceChange(result, 'UNPAY', result.amount);
-        }
-      }
+      case 'account':
+        if (action === 'CREATE') result = await prisma.account.create({ data: { ...data, userId } });
+        else if (action === 'UPDATE') result = await prisma.account.update({ where: { id, userId }, data });
+        else if (action === 'DELETE') result = await prisma.account.delete({ where: { id, userId } });
+        break;
 
-    } else if (action === 'DELETE') {
-      if (!id) return NextResponse.json({ error: 'ID wajib untuk delete' }, { status: 400 });
-      
-      // Jika hapus transaksi, kembalikan saldonya
-      if (entity === 'transaction') {
-        const oldTx = await model.findUnique({ where: { id } });
-        if (oldTx) {
-          await applyBalanceChange(oldTx, true); // Revert saldo yang pernah terpotong/bertambah
+      case 'budget':
+        if (action === 'CREATE') {
+           let categoryId = data.categoryId;
+           if (!categoryId && data.category) {
+               const cat = await prisma.category.findFirst({ where: { userId, name: data.category } });
+               if (cat) categoryId = cat.id;
+           }
+           if (!categoryId) return NextResponse.json({ error: 'Kategori tidak valid' }, { status: 400 });
+           
+           result = await prisma.budget.create({ data: { categoryId, amount: data.amount, userId } });
         }
-      }
-      
-      let oldDebt = null;
-      if (entity === 'debt') {
-        oldDebt = await model.findUnique({ where: { id } });
-      }
+        else if (action === 'UPDATE') result = await prisma.budget.update({ where: { id, userId }, data });
+        else if (action === 'DELETE') result = await prisma.budget.delete({ where: { id, userId } });
+        break;
 
-      result = await model.delete({
-        where: { id }
-      });
-      
-      if (entity === 'debt' && oldDebt) {
-        if (oldDebt.status === 'active') {
-          await applyDebtBalanceChange(oldDebt, 'DELETE_PENDING');
+      case 'goal':
+        if (action === 'CREATE') result = await prisma.goal.create({ data: { ...data, userId } });
+        else if (action === 'UPDATE') result = await prisma.goal.update({ where: { id, userId }, data });
+        else if (action === 'DELETE') result = await prisma.goal.delete({ where: { id, userId } });
+        break;
+
+      case 'subscription':
+        if (action === 'CREATE') {
+          result = await prisma.subscription.create({ data: {
+            name: data.name,
+            amount: data.amount,
+            cycle: data.billingCycle || data.cycle,
+            category: data.category || 'Uncategorized',
+            startDate: data.startDate ? new Date(data.startDate) : new Date(),
+            nextPayment: data.nextBilling ? new Date(data.nextBilling) : (data.nextPayment ? new Date(data.nextPayment) : new Date()),
+            isActive: data.isActive !== undefined ? data.isActive : true,
+            accountId: data.accountId || null,
+            userId
+          }});
+        } else if (action === 'UPDATE') {
+          const updateData: any = { ...data };
+          if (data.billingCycle) updateData.cycle = data.billingCycle;
+          if (data.nextBilling) updateData.nextPayment = new Date(data.nextBilling);
+          if (data.startDate) updateData.startDate = new Date(data.startDate);
+          
+          delete updateData.billingCycle;
+          delete updateData.nextBilling;
+          
+          result = await prisma.subscription.update({ where: { id, userId }, data: updateData });
+        } else if (action === 'DELETE') {
+          result = await prisma.subscription.delete({ where: { id, userId } });
         }
-      }
-    } else {
-      return NextResponse.json({ error: 'Aksi tidak valid' }, { status: 400 });
+        break;
+
+      case 'debt':
+        if (action === 'CREATE') {
+          result = await prisma.debt.create({ data: {
+            name: data.person || data.name,
+            type: data.type === 'debt' ? 'take' : (data.type === 'receivable' ? 'give' : data.type),
+            amount: data.amount,
+            remaining: data.remaining !== undefined ? data.remaining : data.amount,
+            dueDate: data.dueDate ? new Date(data.dueDate) : new Date(),
+            status: data.status === 'pending' ? 'active' : (data.status || 'active'),
+            accountId: data.accountId || null,
+            userId
+          }});
+        } else if (action === 'UPDATE') {
+          const updateData: any = { ...data };
+          if (data.person) updateData.name = data.person;
+          if (data.type) updateData.type = data.type === 'debt' ? 'take' : (data.type === 'receivable' ? 'give' : data.type);
+          if (data.dueDate) updateData.dueDate = new Date(data.dueDate);
+          if (data.status === 'paid') updateData.status = 'paid';
+          if (data.status === 'pending') updateData.status = 'active';
+          
+          delete updateData.person;
+          
+          result = await prisma.debt.update({ where: { id, userId }, data: updateData });
+        } else if (action === 'DELETE') {
+          result = await prisma.debt.delete({ where: { id, userId } });
+        }
+        break;
+
+      case 'category':
+        if (action === 'CREATE') result = await prisma.category.create({ data: { ...data, userId } });
+        else if (action === 'UPDATE') result = await prisma.category.update({ where: { id, userId }, data });
+        else if (action === 'DELETE') result = await prisma.category.delete({ where: { id, userId } });
+        break;
+
+      default:
+        return NextResponse.json({ error: 'Unknown entity' }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, result });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Mutate Error:", error);
-    return NextResponse.json({ error: 'Gagal melakukan operasi database' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal melakukan mutasi data' }, { status: 500 });
   }
 }

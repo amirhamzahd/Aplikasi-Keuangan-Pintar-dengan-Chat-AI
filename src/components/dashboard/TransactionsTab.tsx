@@ -17,6 +17,12 @@ import {
   Gift, Compass, Umbrella, Smartphone, Layers, Briefcase, Heart, GraduationCap
 } from 'lucide-react';
 
+const safeDate = (dateStr: any, options?: any) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('id-ID', options);
+};
+
 const COLORS = {
   primary: '#2563EB',
   success: '#10B981',
@@ -117,9 +123,15 @@ export function TransactionsTab({
   // Filtering Logic
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      const matchSearch = t.description.toLowerCase().includes(search.toLowerCase()) || 
-                          t.category.toLowerCase().includes(search.toLowerCase()) ||
-                          t.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
+      const desc = (t.description || '').toLowerCase();
+      const cat = (t.category || '').toLowerCase();
+      const searchLower = search.toLowerCase();
+      const tags = t.tags || [];
+
+      const matchSearch = desc.includes(searchLower) || 
+                          cat.includes(searchLower) ||
+                          tags.some(tag => (tag || '').toLowerCase().includes(searchLower));
+      
       const matchType = typeFilter === 'all' ? true : t.type === typeFilter;
       const matchCategory = categoryFilter === 'all' ? true : t.category === categoryFilter;
       const matchAccount = accountFilter === 'all' ? true : t.accountId === accountFilter;
@@ -180,7 +192,7 @@ export function TransactionsTab({
         t.category,
         t.date,
         t.accountId,
-        t.tags.join(';')
+        (t.tags || []).join(';')
       ]);
       content = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     } else {
@@ -378,76 +390,73 @@ export function TransactionsTab({
     <div className="space-y-6">
       
       {/* 1. Header & Actions Panel */}
-      <div className="flex flex-col xl:flex-row gap-4 xl:items-center justify-between">
-        
-        {/* Left: Search & Filter indicators */}
-        <div className="flex-1 flex flex-col xl:flex-row gap-3">
-          <div className="xl:w-64">
-            <Input 
-              placeholder="Cari transaksi..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              icon={<Search size={18} />}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2 shrink-0 items-center">
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-slate-500 font-semibold hidden sm:block">Rentang:</span>
-              <Input 
+      <div className="flex flex-col gap-3 mb-2">
+        {/* Top: Search */}
+        <div className="w-full">
+          <Input 
+            placeholder="Cari transaksi (nama, kategori, tag)..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            icon={<Search size={18} />}
+          />
+        </div>
+
+        {/* Bottom: Filters & Actions */}
+        <div className="flex flex-col md:flex-row gap-3 justify-between items-start md:items-center bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
+          <div className="flex flex-col md:flex-row gap-3 items-start md:items-center w-full md:w-auto">
+            <div className="flex items-center gap-2 w-full md:w-auto bg-white border border-slate-200 rounded-xl px-3 py-2 shrink-0 h-[42px]">
+              <span className="text-[13px] text-slate-500 font-semibold hidden md:block">Rentang:</span>
+              <input 
                 type="date"
+                className="text-[13px] border-none bg-transparent outline-none text-slate-700 w-full flex-1 md:w-auto cursor-pointer"
                 value={startDateFilter}
                 onChange={(e) => setStartDateFilter(e.target.value)}
               />
-              <span className="text-slate-300">-</span>
-              <Input 
+              <span className="text-slate-300 text-sm">-</span>
+              <input 
                 type="date"
+                className="text-[13px] border-none bg-transparent outline-none text-slate-700 w-full flex-1 md:w-auto cursor-pointer"
                 value={endDateFilter}
                 onChange={(e) => setEndDateFilter(e.target.value)}
               />
             </div>
-            <Select 
-              value={typeFilter} 
-              onChange={(e) => setTypeFilter(e.target.value as any)}
-              options={[
-                { value: 'all', label: 'Semua Jenis' },
-                { value: 'income', label: 'Pemasukan' },
-                { value: 'expense', label: 'Pengeluaran' },
-                { value: 'transfer', label: 'Transfer' },
-              ]}
-            />
-            <Select 
-              value={categoryFilter} 
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              options={[
-                { value: 'all', label: 'Semua Kategori' },
-                ...categoriesList.filter(c => c !== 'all').map(c => ({ value: c, label: c })),
-              ]}
-            />
+            <div className="w-full md:w-48 shrink-0">
+              <Select 
+                value={typeFilter} 
+                onChange={(e) => setTypeFilter(e.target.value as any)}
+                options={[
+                  { value: 'all', label: 'Semua Jenis' },
+                  { value: 'income', label: 'Pemasukan' },
+                  { value: 'expense', label: 'Pengeluaran' },
+                  { value: 'transfer', label: 'Transfer' },
+                ]}
+              />
+            </div>
+            <div className="w-full md:w-48 shrink-0">
+              <Select 
+                value={categoryFilter} 
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                options={[
+                  { value: 'all', label: 'Semua Kategori' },
+                  ...categoriesList.filter(c => c !== 'all').map(c => ({ value: c, label: c })),
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <div className="shrink-0 w-full md:w-auto pt-1 md:pt-0 border-t border-slate-200 md:border-none mt-1 md:mt-0">
+            <Button variant="primary" onClick={onAddTransactionClick} className="font-semibold text-xs py-2 px-3 w-full md:w-auto h-[42px]">
+              <Plus size={16} />
+              Transaksi
+            </Button>
           </div>
         </div>
-
-        {/* Right: Actions Buttons */}
-        <div className="flex gap-2">
-          <Button variant="secondary" size="icon" title="Transfer antar akun" onClick={() => setShowTransferModal(true)}>
-            <ArrowRightLeft size={16} />
-          </Button>
-          <Button variant="secondary" size="icon" title="Import" onClick={() => setShowImportModal(true)}>
-            <FileUp size={16} />
-          </Button>
-          <Button variant="secondary" size="icon" title="Export" onClick={() => setShowExportModal(true)}>
-            <FileDown size={16} />
-          </Button>
-          <Button variant="primary" onClick={onAddTransactionClick} className="font-semibold text-xs py-2 px-3">
-            <Plus size={16} />
-            Transaksi
-          </Button>
-        </div>
-
       </div>
 
       {/* Visual Chart untuk Ekspor/Analisis (Top 5 Pengeluaran) */}
       {expenseData.length > 0 && typeFilter !== 'income' && (
-        <Card className="mb-4">
+        <Card className="mb-4 mt-8">
           <CardContent className="p-4 sm:p-6">
             <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
               <TrendingDown className="text-danger" size={16} /> 5 Pengeluaran Terbesar
@@ -505,7 +514,7 @@ export function TransactionsTab({
                       )}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900">{tx.description}</h4>
+                      <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{tx.description}</h4>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1">
                         <span className="bg-slate-100 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider text-slate-500 text-[10px]">
                           {accounts.find(a => a.id === tx.accountId)?.name || tx.accountId}
@@ -521,7 +530,7 @@ export function TransactionsTab({
                         <span>•</span>
                         <span className="font-semibold text-slate-500">{tx.category}</span>
                         <span>•</span>
-                        <span>{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                        <span>{safeDate(tx.date, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                         
                         {tx.tags?.map(t => (
                           <span key={t} className="text-primary font-bold">#{t}</span>
@@ -531,11 +540,11 @@ export function TransactionsTab({
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pl-14 sm:pl-0">
-                    <div className={`font-extrabold text-sm md:text-base ${
+                    <div className={`font-extrabold text-xs md:text-sm ${
                       tx.type === 'income' 
                         ? 'text-success' 
                         : tx.type === 'expense' 
-                        ? 'text-slate-800' 
+                        ? 'text-danger' 
                         : 'text-primary'
                     }`}>
                       {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '⇄'}

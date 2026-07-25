@@ -115,7 +115,7 @@ export function CategoriesTab() {
       {/* 1. Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900">Kelola Kategori Pengeluaran</h2>
+          <h2 className="text-lg font-bold text-slate-800">Kelola Kategori Pengeluaran</h2>
           <p className="text-xs text-slate-500 mt-0.5">Tambah dan kustomisasi kategori pengeluaran Anda</p>
         </div>
         <Button variant="primary" onClick={() => setShowAddModal(true)} className="text-xs font-semibold py-2.5 px-4 w-full sm:w-auto justify-center">

@@ -118,45 +118,47 @@ export function ReportsTab() {
   return (
     <div className="space-y-12">
       <div className="mb-6 print:hidden">
-        <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">Rekap Laporan</h2>
+        <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">Rekap Laporan</h2>
         <p className="text-sm text-slate-500 mt-1">Export data keuangan Anda ke berbagai format.</p>
       </div>
 
-      {/* Summary Statistics Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 print:hidden">
-        {/* Total Pemasukan */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer">
-          <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center text-success">
-            <ArrowUpRight size={24} strokeWidth={2.5} />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Pemasukan</p>
-            <p className="text-xl font-extrabold text-slate-800">{formatIDR(totalIncome)}</p>
-          </div>
+      {/* Summary Statistics Card */}
+      <Card glass={false} className="relative overflow-hidden group bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-950 text-white border-0 shadow-xl mb-12 rounded-3xl print:hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
+          <Wallet size={180} strokeWidth={1} />
         </div>
-
-        {/* Total Pengeluaran */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer">
-          <div className="w-12 h-12 rounded-xl bg-danger/10 flex items-center justify-center text-danger">
-            <ArrowDownRight size={24} strokeWidth={2.5} />
+        
+        <CardContent className="p-6 pt-10 sm:p-8 sm:pt-12 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-indigo-200/80">
+                <Wallet size={18} />
+                <h3 className="text-sm font-bold uppercase tracking-widest">Saldo Saat Ini</h3>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl sm:text-5xl font-black tracking-tight">{formatIDR(totalBalance)}</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6 md:gap-10 pt-4 md:pt-0 border-t md:border-t-0 border-indigo-400/20">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-indigo-200/80 mb-1">
+                  <ArrowUpRight size={14} className="text-emerald-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Pemasukan</span>
+                </div>
+                <p className="text-lg font-bold text-white">{formatIDR(totalIncome)}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-indigo-200/80 mb-1">
+                  <ArrowDownRight size={14} className="text-rose-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-rose-300">Pengeluaran</span>
+                </div>
+                <p className="text-lg font-bold text-white">{formatIDR(totalExpense)}</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Total Pengeluaran</p>
-            <p className="text-xl font-extrabold text-slate-800">{formatIDR(totalExpense)}</p>
-          </div>
-        </div>
-
-        {/* Saldo Saat Ini */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <Wallet size={24} strokeWidth={2.5} />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Saldo Saat Ini</p>
-            <p className="text-xl font-extrabold text-slate-800">{formatIDR(totalBalance)}</p>
-          </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
 
 
@@ -164,7 +166,7 @@ export function ReportsTab() {
       <section className="print:hidden">
         <div className="mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">Rekap Berdasarkan Tanggal</h2>
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">Rekap Berdasarkan Tanggal</h2>
             <p className="text-sm text-slate-500 mt-1">Export atau cetak data transaksi berdasarkan rentang tanggal spesifik pilihan Anda.</p>
           </div>
           
@@ -213,38 +215,13 @@ export function ReportsTab() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Export CSV Custom */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center text-success">
-                <FileText size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-800">Export CSV</h3>
-                <p className="text-xs text-slate-500">Rentang Tanggal</p>
-              </div>
-            </div>
-            <button onClick={handleExportCSVCustom} className="w-full mt-auto py-2.5 bg-primary/10 text-primary hover:bg-primary/20 text-sm font-bold tracking-wide rounded-xl flex items-center justify-center gap-2 transition-colors">
-              <Download size={16} /> Unduh
-            </button>
-          </div>
-
-          {/* Print PDF Custom */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col hover:-translate-y-1 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-danger/10 flex items-center justify-center text-danger">
-                <Printer size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-800">Print / PDF</h3>
-                <p className="text-xs text-slate-500">Rentang Tanggal</p>
-              </div>
-            </div>
-            <button onClick={() => handlePrintPDF('custom')} className="w-full mt-auto py-2.5 bg-danger text-white text-sm font-bold tracking-wide rounded-xl flex items-center justify-center gap-2 hover:bg-danger/90 shadow-md shadow-danger/25 transition-all active:scale-95">
-              <Printer size={16} /> Cetak
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={handleExportCSVCustom} variant="secondary" className="text-xs font-bold py-2 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 flex items-center gap-2 shadow-sm">
+            <FileText size={14} /> Export CSV
+          </Button>
+          <Button onClick={() => handlePrintPDF('custom')} variant="primary" className="text-xs font-bold py-2 rounded-lg bg-danger hover:bg-danger/90 text-white flex items-center gap-2 shadow-sm border-0">
+            <Printer size={14} /> Cetak / PDF
+          </Button>
         </div>
       </section>
 
@@ -377,7 +354,7 @@ export function ReportsTab() {
             <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
               <CheckCircle2 size={28} />
             </div>
-            <h2 className="text-xl font-extrabold text-slate-800 mb-2">Laporan Siap Dicetak</h2>
+            <h2 className="text-lg font-bold text-slate-800 mb-2">Laporan Siap Dicetak</h2>
             <p className="text-sm text-slate-500 mb-6">
               Laporan keuangan telah berhasil disiapkan berdasarkan rentang tanggal yang Anda pilih.
             </p>

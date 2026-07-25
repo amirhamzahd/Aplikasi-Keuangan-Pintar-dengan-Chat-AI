@@ -284,7 +284,10 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
         setMonthlyCutoffDate(data.user.monthlyCutoffDate || 1);
         setCurrentPeriodStart(data.user.currentPeriodStart || null);
         setCurrentPeriodEnd(data.user.currentPeriodEnd || null);
-        setTransactions(data.transactions || []);
+        setTransactions((data.transactions || []).map((t: any) => ({
+          ...t,
+          tags: Array.isArray(t.tags) ? t.tags : (typeof t.tags === 'string' && t.tags ? t.tags.split(',').map((s: string) => s.trim()) : [])
+        })));
         setAccounts(data.accounts || []);
         setBudgets(data.budgets || []);
         setGoals(data.goals || []);
@@ -306,6 +309,14 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
   // Universal database mutator helper
   const mutateDb = async (entity: string, action: string, data: any = {}, id?: string) => {
     if (!user) return null;
+
+    // Check Read-Only Mode
+    const isExpired = user.planExpiredAt ? new Date(user.planExpiredAt) < new Date() : false;
+    if (user.planType === 'NONE' || isExpired) {
+      showToast('Akun Anda dalam mode Read-Only. Silakan perpanjang paket untuk mengubah data.', 'danger');
+      throw new Error('READ_ONLY');
+    }
+
     try {
       const res = await fetch('/api/mutate', {
         method: 'POST',
@@ -559,7 +570,22 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
   };
 
   const addDebt = async (debt: Omit<DbDebt, 'id' | 'status'>) => {
+    // 1. Create debt record
     await mutateDb('debt', 'CREATE', { ...debt, dueDate: debt.dueDate ? new Date(debt.dueDate).toISOString() : "", status: 'pending' });
+    
+    // 2. Adjust balance for initial loan
+    if (debt.accountId) {
+      const isHutang = debt.type === 'debt';
+      await mutateDb('transaction', 'CREATE', {
+        description: isHutang ? `Pinjaman dari ${debt.person}` : `Memberi pinjaman ke ${debt.person}`,
+        amount: debt.amount,
+        type: isHutang ? 'income' : 'expense',
+        accountId: debt.accountId,
+        category: 'Hutang/Piutang',
+        tags: isHutang ? 'hutang, masuk' : 'piutang, keluar'
+      });
+    }
+
     showToast(`Catatan hutang-piutang untuk "${debt.person}" berhasil ditambahkan!`, 'success');
     refreshData();
   };
@@ -582,8 +608,26 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
   const payDebt = async (id: string, targetAccountId?: string) => {
     const d = debts.find(x => x.id === id);
     if (!d) return;
+    
+    const accId = targetAccountId || d.accountId;
+    if (accId) {
+      const sourceAcc = accounts.find(a => a.id === accId);
+      if (d.type === 'debt' && sourceAcc && sourceAcc.balance < d.amount) {
+        showToast(`Pelunasan Gagal! Saldo di ${sourceAcc.name} tidak mencukupi.`, 'danger');
+        return;
+      }
+      
+      await mutateDb('transaction', 'CREATE', {
+        description: `Pelunasan ${d.type === 'debt' ? 'Hutang ke' : 'Piutang dari'} ${d.person}`,
+        amount: d.amount,
+        type: d.type === 'debt' ? 'expense' : 'income',
+        accountId: accId,
+        category: 'Hutang/Piutang',
+        tags: 'pelunasan, hutang'
+      });
+    }
 
-    await mutateDb('debt', 'UPDATE', { status: 'paid', accountId: targetAccountId || d.accountId }, id);
+    await mutateDb('debt', 'UPDATE', { status: 'paid', accountId: accId }, id);
     showToast(`Status Hutang-piutang "${d.person}" berhasil diselesaikan!`, 'success');
     refreshData();
   };
@@ -591,6 +635,21 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
   const payDebtPartial = async (id: string, amount: number, accountId: string) => {
     const debt = debts.find(d => d.id === id);
     if (!debt) return;
+    
+    const sourceAcc = accounts.find(a => a.id === accountId);
+    if (debt.type === 'debt' && sourceAcc && sourceAcc.balance < amount) {
+      showToast(`Cicilan Gagal! Saldo di ${sourceAcc.name} tidak mencukupi.`, 'danger');
+      return;
+    }
+    
+    await mutateDb('transaction', 'CREATE', {
+      description: `Cicilan ${debt.type === 'debt' ? 'Hutang ke' : 'Piutang dari'} ${debt.person}`,
+      amount: amount,
+      type: debt.type === 'debt' ? 'expense' : 'income',
+      accountId: accountId,
+      category: 'Hutang/Piutang',
+      tags: 'cicilan, hutang'
+    });
 
     const newAmount = debt.amount - amount;
     const newStatus = newAmount <= 0 ? 'paid' : 'pending';
@@ -605,6 +664,33 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
     if (!d) return;
 
     const newStatus = d.status === 'pending' ? 'paid' : 'pending';
+    const isHutang = d.type === 'debt';
+    const accId = d.accountId || accounts[0]?.id;
+
+    if (accId) {
+      if (newStatus === 'paid') {
+        // Tandai Lunas manual -> Create payment transaction
+        await mutateDb('transaction', 'CREATE', {
+          description: `Pelunasan Manual ${isHutang ? 'Hutang ke' : 'Piutang dari'} ${d.person}`,
+          amount: d.amount,
+          type: isHutang ? 'expense' : 'income',
+          accountId: accId,
+          category: 'Hutang/Piutang',
+          tags: 'pelunasan, hutang'
+        });
+      } else {
+        // Batal Lunas -> Create reverse transaction
+        await mutateDb('transaction', 'CREATE', {
+          description: `Batal Lunas ${isHutang ? 'Hutang ke' : 'Piutang dari'} ${d.person}`,
+          amount: d.amount,
+          type: isHutang ? 'income' : 'expense',
+          accountId: accId,
+          category: 'Hutang/Piutang',
+          tags: 'batal lunas, hutang'
+        });
+      }
+    }
+
     await mutateDb('debt', 'UPDATE', { status: newStatus }, id);
     showToast(`Status hutang "${d.person}" diubah menjadi ${newStatus === 'paid' ? 'Lunas' : 'Belum Lunas'}!`, 'success');
     refreshData();

@@ -1,45 +1,53 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const email = searchParams.get('email');
-
-  if (!email) {
-    return NextResponse.json({ error: 'Email wajib disertakan' }, { status: 400 });
+  const session = await getSession();
+  
+  if (!session || !session.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 });
-
     const transactions = await prisma.transaction.findMany({
-      where: { userId: user.id },
-      orderBy: { date: 'desc' }
+      where: { userId: session.id },
+      orderBy: { date: 'desc' },
+      include: {
+        category: true // Include category details
+      }
     });
 
     return NextResponse.json(transactions);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Gagal mengambil transaksi' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const session = await getSession();
+  
+  if (!session || !session.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { email, amount, description, type, category, tags, accountId, toAccountId, date } = body;
+    const { amount, description, type, categoryId, tags, accountId, toAccountId, date } = body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 });
+    if (!categoryId) {
+      return NextResponse.json({ error: 'categoryId wajib diisi' }, { status: 400 });
+    }
 
     const newTx = await prisma.transaction.create({
       data: {
-        userId: user.id,
+        userId: session.id,
         amount: parseFloat(amount),
         description,
         type,
-        category,
-        tags: tags || '',
+        categoryId,
+        tags: Array.isArray(tags) ? tags.join(',') : (tags || ''), // temporary fix for tags string
         accountId,
         toAccountId: toAccountId || null,
         date: date ? new Date(date) : new Date(),
@@ -48,6 +56,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(newTx);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Gagal menambah transaksi' }, { status: 500 });
   }
 }

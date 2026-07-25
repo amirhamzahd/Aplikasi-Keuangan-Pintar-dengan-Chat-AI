@@ -4,15 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { useTransactions } from '@/context/TransactionContext';
-import { CalendarDays, Save, Settings, AlertTriangle, Trash2, Info, Repeat, BookOpen, Download } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { CalendarDays, Save, Settings, AlertTriangle, Trash2, Info, Repeat, BookOpen, Download, Gem, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function SettingsTab() {
   const { currentPeriodStart, currentPeriodEnd, updatePeriodRange, resetData } = useTransactions();
+  const { user } = useAuth();
   
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [showResetModal, setShowResetModal] = useState(false);
+  
+  const isExpired = user?.planExpiredAt ? new Date(user.planExpiredAt) < new Date() : false;
 
   useEffect(() => {
     if (currentPeriodStart) {
@@ -45,7 +49,56 @@ export function SettingsTab() {
         <p className="text-sm text-slate-500 mt-1">Sesuaikan pengalaman penggunaan aplikasi</p>
       </div>
 
-
+      {/* BERLANGGANAN & BILLING */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gem size={18} className="text-primary" />
+            Langganan & Tagihan
+          </CardTitle>
+          <CardDescription>
+            Kelola paket langganan Anda, lihat masa aktif, atau perpanjang paket.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <div>
+              <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                Informasi Langganan
+                {user?.planType && user.planType !== 'NONE' && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    isExpired 
+                      ? 'bg-rose-100 text-rose-700' 
+                      : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {user.planType} {isExpired ? '(Kedaluwarsa)' : '(Aktif)'}
+                  </span>
+                )}
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-md">
+                {user?.planType === 'NONE' || !user?.planType ? (
+                  'Periksa status langganan DIAMOND Finance Anda.'
+                ) : (
+                  <>
+                    Masa aktif paket {user.planType} Anda s/d{' '}
+                    <span className="font-semibold text-slate-700">
+                      {new Date(user.planExpiredAt || '').toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'long', year: 'numeric'
+                      })}
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+            <a 
+              href="/dashboard/billing" 
+              className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 transition shadow-sm"
+            >
+              Kelola Langganan <ArrowRight size={16} />
+            </a>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* RENTANG TANGGAL MANUAL */}
       <Card>

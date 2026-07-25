@@ -6,7 +6,9 @@ import { useTransactions } from '@/context/TransactionContext';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { Header } from '@/components/shared/Header';
 import { OverviewTab } from '@/components/dashboard/OverviewTab';
+import { BottomNav } from '@/components/shared/BottomNav';
 import { TransactionsTab } from '@/components/dashboard/TransactionsTab';
+import { ChatTab } from '@/components/dashboard/ChatTab';
 import { BudgetTab } from '@/components/dashboard/BudgetTab';
 import { GoalsTab } from '@/components/dashboard/GoalsTab';
 import { BillsTab } from '@/components/dashboard/BillsTab';
@@ -14,6 +16,7 @@ import { IncomeSourcesTab } from '@/components/dashboard/IncomeSourcesTab';
 import { AccountsTab } from '@/components/dashboard/AccountsTab';
 import { CategoriesTab } from '@/components/dashboard/CategoriesTab';
 import { SettingsTab } from '@/components/dashboard/SettingsTab';
+import { ProfileTab } from '@/components/dashboard/ProfileTab';
 import { DebtsTab } from '@/components/dashboard/DebtsTab';
 import { ReportsTab } from '@/components/dashboard/ReportsTab';
 import { FloatingAIAssistant } from '@/components/shared/FloatingAIAssistant';
@@ -24,6 +27,7 @@ import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 export default function DashboardPage() {
@@ -32,7 +36,6 @@ export default function DashboardPage() {
   
   // Navigation
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Manual Transaction Form States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -49,6 +52,16 @@ export default function DashboardPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-slate-50">
         <Loader2 className="animate-spin text-primary" size={36} />
+      </div>
+    );
+  }
+
+  // Strict guard: don't render dashboard if plan is NONE
+  if (!user.planType || user.planType === 'NONE') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <Loader2 className="animate-spin text-primary" size={36} />
+        <p className="mt-4 text-slate-500 font-medium">Mengarahkan ke halaman paket...</p>
       </div>
     );
   }
@@ -100,14 +113,16 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] font-sans">
+    <div className="flex h-screen bg-slate-50 font-sans relative overflow-hidden">
+      {/* Premium Animated Mesh Gradient Background */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-blob"></div>
+      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-blob animation-delay-2000"></div>
+      <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] rounded-full bg-purple-400/20 blur-[120px] mix-blend-multiply pointer-events-none animate-blob animation-delay-4000"></div>
       
       {/* 1. Sidebar Panel */}
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        isMobileOpen={isMobileSidebarOpen}
-        setIsMobileOpen={setIsMobileSidebarOpen}
         userName={user.name}
         userEmail={user.email}
         logout={logout}
@@ -117,31 +132,42 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <Header 
           userName={user.name} 
-          onMenuToggle={() => setIsMobileSidebarOpen(true)} 
         />
         
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pt-6 pb-24 md:pb-8 relative">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pt-6 pb-28 md:pb-8 relative">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && (
-              <OverviewTab 
-                onAddTransactionClick={handleOpenAddModal} 
-                setActiveTab={setActiveTab}
-              />
-            )}
-            {activeTab === 'transactions' && (
-              <TransactionsTab 
-                onAddTransactionClick={handleOpenAddModal} 
-              />
-            )}
-            {activeTab === 'budget' && <BudgetTab />}
-            {activeTab === 'income-sources' && <IncomeSourcesTab />}
-            {activeTab === 'goals' && <GoalsTab />}
-            {activeTab === 'bills' && <BillsTab />}
-            {activeTab === 'debts' && <DebtsTab />}
-            {activeTab === 'categories' && <CategoriesTab />}
-            {activeTab === 'accounts' && <AccountsTab />}
-            {activeTab === 'reports' && <ReportsTab />}
-            {activeTab === 'settings' && <SettingsTab />}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.2 }}
+              >
+                {activeTab === 'dashboard' && (
+                  <OverviewTab 
+                    onAddTransactionClick={handleOpenAddModal} 
+                    setActiveTab={setActiveTab}
+                  />
+                )}
+                {activeTab === 'transactions' && (
+                  <TransactionsTab 
+                    onAddTransactionClick={handleOpenAddModal} 
+                  />
+                )}
+                {activeTab === 'budget' && <BudgetTab />}
+                {activeTab === 'income-sources' && <IncomeSourcesTab />}
+                {activeTab === 'goals' && <GoalsTab />}
+                {activeTab === 'bills' && <BillsTab />}
+                {activeTab === 'debts' && <DebtsTab />}
+                {activeTab === 'categories' && <CategoriesTab />}
+                {activeTab === 'accounts' && <AccountsTab />}
+                {activeTab === 'reports' && <ReportsTab />}
+                {activeTab === 'settings' && <SettingsTab />}
+                {activeTab === 'profile' && <ProfileTab />}
+                {activeTab === 'chat' && <ChatTab onClose={() => setActiveTab('dashboard')} />}
+              </motion.div>
+            </AnimatePresence>
           </div>
           
           {/* Dynamic Footer */}
@@ -149,8 +175,17 @@ export default function DashboardPage() {
             <Footer />
           </div>
         </main>
-
       </div>
+
+      <BottomNav 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        onAddTransactionClick={handleOpenAddModal}
+        onAiChatClick={() => setActiveTab('chat')}
+        userName={user.name}
+        userEmail={user.email}
+        logout={logout}
+      />
 
       {/* 3. Reusable Manual Transaction Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Tambah Transaksi Manual">

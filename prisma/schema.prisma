@@ -12,6 +12,8 @@ model User {
   id                String         @id @default(uuid())
   email             String         @unique
   name              String
+  gender            String?
+  photo             String?
   password          String
   isVerified        Boolean        @default(false)
   verificationToken String?
@@ -21,6 +23,12 @@ model User {
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
   
+  isPremium         Boolean        @default(false)
+  premiumUntil      DateTime?
+  
+  planType          String         @default("NONE") // NONE, BASIC, PLUS, PRO
+  planExpiredAt     DateTime?
+  
   // Relasi
   accounts          Account[]
   categories        Category[]
@@ -29,6 +37,7 @@ model User {
   goals             Goal[]
   subscriptions     Subscription[]
   debts             Debt[]
+  paymentTransactions PaymentTransaction[]
 }
 
 model Account {
@@ -58,6 +67,9 @@ model Category {
   
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String?
+
+  transactions Transaction[]
+  budgets      Budget[]
 }
 
 model Transaction {
@@ -66,8 +78,11 @@ model Transaction {
   date        DateTime @default(now())
   description String
   type        String   // income, expense, transfer
-  category    String
-  tags        String   // Disimpan sebagai JSON string list atau teks koma
+  
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  
+  tags        String   // Dipertahankan sebagai string untuk UI compatibility
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
@@ -81,13 +96,16 @@ model Transaction {
 
 model Budget {
   id        String   @id @default(uuid())
-  category  String
+  
+  category  Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+  
   amount    Float
   
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
 
-  @@unique([userId, category])
+  @@unique([userId, categoryId])
 }
 
 model Goal {
@@ -107,7 +125,7 @@ model Subscription {
   name        String
   amount      Float
   cycle       String   // monthly, yearly
-  category    String
+  category    String   // Dipertahankan sbg string
   startDate   DateTime
   nextPayment DateTime
   isActive    Boolean  @default(true)
@@ -132,4 +150,18 @@ model Debt {
   
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
+}
+
+model PaymentTransaction {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  amount        Float
+  status        String   // pending, success, failed
+  paymentUrl    String?
+  planType      String   @default("NONE") // Menyimpan paket apa yang sedang dibeli
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
 }

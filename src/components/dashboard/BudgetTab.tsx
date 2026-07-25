@@ -75,7 +75,7 @@ export function BudgetTab() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-10 pb-10">
       
       {/* 1. Configuration Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -167,8 +167,8 @@ export function BudgetTab() {
       </div>
 
       {/* 2. Budgets Tracking List with CRUD */}
-      <div className="space-y-4 pt-6">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Monitoring Limit</h3>
+      <div className="w-full">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-8">Monitoring Limit</h3>
         {budgets.length === 0 ? (
           <Card className="p-8 text-center text-slate-400">
             <ShieldAlert size={36} className="mx-auto mb-2 opacity-20" />
@@ -194,11 +194,11 @@ export function BudgetTab() {
               return (
                 <Card 
                   key={b.id} 
-                  className={`border-l-4 ${
+                  className={`border-l-4 overflow-hidden ${
                     isOver ? 'border-l-danger' : isWarning ? 'border-l-warning' : 'border-l-success'
                   }`}
                 >
-                  <CardContent className="p-5 space-y-3.5 relative">
+                  <div className="p-5 space-y-3.5 relative h-full">
                     
                     {/* Header info & CRUD Controls */}
                     <div className="flex justify-between items-start">
@@ -252,7 +252,7 @@ export function BudgetTab() {
                         <span className="font-extrabold text-slate-800">{formatIDR(b.amount)}</span>
                       </div>
                     </div>
-                  </CardContent>
+                  </div>
                 </Card>
               );
             })}

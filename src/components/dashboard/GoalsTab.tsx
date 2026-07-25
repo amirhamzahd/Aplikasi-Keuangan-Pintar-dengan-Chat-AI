@@ -232,32 +232,38 @@ export function GoalsTab() {
               dateProjected.setMonth(dateProjected.getMonth() + Math.ceil(monthsProjected));
 
               return (
-                <Card key={goal.id} className="relative overflow-hidden hover:border-primary/20 transition-all duration-300">
-                  <div className="p-5 sm:p-6 space-y-4">
+                <div key={goal.id} className="relative overflow-hidden bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300">
+                  <div className="p-6 space-y-5">
                     
                     {/* Header Details */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                      <div>
-                        <h4 className="text-sm sm:text-base font-extrabold text-slate-900 line-clamp-1">{goal.name}</h4>
-                        <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5">
-                          Tenggat: {new Date(goal.targetDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/50 flex items-center justify-center text-primary shrink-0 border border-blue-100/50">
+                          <PiggyBank size={22} />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-800 line-clamp-1">{goal.name}</h4>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Calendar size={12} className="text-slate-400" />
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                              Tenggat: {new Date(goal.targetDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                        <Badge variant={percent === 100 ? 'success' : 'primary'} className="text-[9px] px-1.5 py-0.5">
-                          {percent === 100 ? 'Selesai' : `${percent}%`}
-                        </Badge>
-                        <div className="flex gap-1">
+                      
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
                           <button 
                             onClick={() => handleOpenEdit(goal)}
-                            className="p-1 text-slate-400 hover:text-primary transition hover:bg-slate-100 rounded-lg cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-primary transition hover:bg-white rounded-lg shadow-sm"
                             title="Edit Target"
                           >
                             <Edit2 size={13} />
                           </button>
                           <button 
                             onClick={() => handleDeleteGoal(goal.id, goal.name)}
-                            className="p-1 text-slate-400 hover:text-danger transition hover:bg-danger/10 rounded-lg cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-danger transition hover:bg-white rounded-lg shadow-sm"
                             title="Hapus Target"
                           >
                             <Trash2 size={13} />
@@ -266,42 +272,68 @@ export function GoalsTab() {
                       </div>
                     </div>
 
-                    {/* Progress Slider */}
-                    <div className="space-y-1.5">
-                      <div className="w-full bg-slate-200/50 rounded-full h-2.5 overflow-hidden">
-                        <div 
-                          className="bg-primary h-2.5 rounded-full transition-all duration-300"
-                          style={{ width: `${percent}%` }}
-                        />
+                    {/* Progress Information */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-end mb-1">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Terkumpul</span>
+                          <span className="text-lg font-black text-slate-800 tracking-tight">{formatIDR(goal.current)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Target</span>
+                          <span className="text-sm font-bold text-slate-600">{formatIDR(goal.target)}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-[10px] sm:text-xs font-bold text-slate-700">
-                        <span>{formatIDR(goal.current)}</span>
-                        <span className="text-slate-500">Target: {formatIDR(goal.target)}</span>
+                      
+                      <div className="relative">
+                        <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden shadow-inner">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-1000 relative overflow-hidden ${
+                              percent === 100 ? 'bg-success' : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                            }`}
+                            style={{ width: `${percent}%` }}
+                          >
+                            {/* Shiny overlay effect */}
+                            <div className="absolute top-0 left-0 right-0 bottom-0 bg-white/20" style={{ transform: 'skewX(-20deg) translateX(-150%)', animation: 'shimmer 2s infinite' }}></div>
+                          </div>
+                        </div>
+                        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 -translate-y-full px-2 py-0.5 rounded-md text-[10px] font-extrabold text-white opacity-0 transition-opacity ${percent > 10 ? 'opacity-100' : ''}`}
+                             style={{ left: `${percent}%`, backgroundColor: percent === 100 ? '#10b981' : '#3b82f6', transform: 'translate(-50%, -10px)' }}>
+                          {percent}%
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-current" style={{ color: percent === 100 ? '#10b981' : '#3b82f6' }}></div>
+                        </div>
                       </div>
                     </div>
 
                     {/* Proyeksi AI Panel */}
-                    {percent < 100 && (
-                      <div className="p-3.5 rounded-xl bg-gradient-to-br from-primary/5 to-indigo-500/5 border border-primary/10 text-xs leading-relaxed space-y-1.5">
-                        <div className="flex items-center gap-1.5 font-bold text-primary">
-                          <Sparkles size={14} className="animate-pulse" />
-                          Proyeksi AI & Rekomendasi
+                    <div className="pt-2">
+                      {percent < 100 ? (
+                        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/80 to-indigo-50/50 border border-blue-100/50 text-xs flex items-start gap-3">
+                          <div className="mt-0.5 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                            <Sparkles size={12} className="animate-pulse" />
+                          </div>
+                          <div>
+                            <span className="font-extrabold text-slate-800 block mb-0.5">Prediksi AI</span>
+                            <span className="text-slate-500 font-medium leading-relaxed">
+                              Berdasarkan sisa bulanan Anda, target akan tercapai dalam <strong className="text-indigo-600">{Math.ceil(monthsProjected)} bulan</strong> ({dateProjected.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}).
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-slate-600">
-                          Berdasarkan kecepatan menabung bersih saat ini ({formatIDR(monthlySavingsSpeed)}/bulan), target ini diperkirakan tercapai dalam <strong className="text-slate-800">{Math.ceil(monthsProjected)} bulan</strong> ({dateProjected.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}).
-                        </p>
-                      </div>
-                    )}
-
-                    {percent === 100 && (
-                      <div className="p-3.5 rounded-xl bg-success/5 border border-success/10 text-xs flex items-center gap-2 text-success font-bold">
-                        <ShieldCheck size={16} />
-                        Selamat! Target tabungan Anda telah tercapai penuh.
-                      </div>
-                    )}
+                      ) : (
+                        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-xs flex items-start gap-3">
+                          <div className="mt-0.5 w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                            <ShieldCheck size={12} />
+                          </div>
+                          <div>
+                            <span className="font-extrabold text-slate-800 block mb-0.5">Misi Selesai! 🎉</span>
+                            <span className="text-slate-500 font-medium">Selamat! Anda telah mencapai impian Anda.</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                   </div>
-                </Card>
+                </div>
               );
             })}
           </div>

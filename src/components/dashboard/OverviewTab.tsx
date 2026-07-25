@@ -12,7 +12,7 @@ import {
   Wallet, TrendingUp, TrendingDown, Percent, Activity, 
   Sparkles, Coffee, Car, ShoppingBag, Zap, DollarSign, Receipt,
   Plus, Calendar, ArrowUpRight, ChevronRight, AlertTriangle, ShieldCheck,
-  Award, Printer, Flame, CheckCircle, Gift, Compass, Umbrella, Smartphone, Layers, Briefcase, Heart, GraduationCap
+  Award, Printer, Flame, CheckCircle, Gift, Compass, Umbrella, Smartphone, Layers, Briefcase, Heart, GraduationCap, PiggyBank
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -78,8 +78,16 @@ export function OverviewTab({
   const [anomalyData, setAnomalyData] = useState<any[]>([]);
 
   const formatIDR = (num: number) => {
+    if (typeof num !== 'number' || isNaN(num)) return 'Rp 0';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
   };
+
+  const safeDate = (dateStr: any, options?: any) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('id-ID', options);
+  };
+
 
   const { categoryColors, categoryIcons } = useMemo(() => {
     const colors: Record<string, string> = {};
@@ -479,7 +487,7 @@ export function OverviewTab({
  else if (count > 4) color = 'bg-primary text-white'; // 5+ tx
 
  cells.push({
- date: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+ date: safeDate(d, { day: 'numeric', month: 'short' }),
  count,
  color
  });
@@ -504,7 +512,7 @@ export function OverviewTab({
  <div>
  <p><strong>Saving Rate:</strong> {savingRate.toFixed(1)}%</p>
  <p><strong>Financial Health Score:</strong> {financialScore}/100</p>
- <p><strong>Tanggal Unduh:</strong> {new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}</p>
+ <p><strong>Tanggal Unduh:</strong> {safeDate(new Date(), { dateStyle: 'long' })}</p>
  </div>
  </div>
  </div>
@@ -514,189 +522,201 @@ export function OverviewTab({
  <div>
  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">Ringkasan Eksekutif</h2>
  </div>
- <Button variant="secondary" size="sm" onClick={() => setShowRecapModal(true)} className="bg-white hover:bg-slate-50 border shadow-sm">
- <Activity size={15} className="text-primary" /> Lihat Rekap
- </Button>
  </div>
 
- {/* 1. Quick Stats Grid */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+ {/* 1. Hero Stats Card */}
+ <Card glass={false} className="w-full relative overflow-hidden group bg-gradient-to-br from-[#0f172a] via-[#1e3a8a] to-[#0f172a] text-white border-0 shadow-2xl">
+ <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-400/30 transition-colors"></div>
+ <CardContent className="p-6 pt-6 relative z-10 flex flex-col justify-center h-full">
+ <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
  
- {/* Sisa Saldo Bulanan */}
- <Card className="hover:-translate-y-1 hover:border-primary/30">
- <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
- <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Sisa Saldo Bulanan</span>
- <div className="p-2 rounded-xl bg-blue-500/10 text-primary">
- <Wallet size={16} />
+ {/* Sisa Saldo (Besar) */}
+ <div className="flex-1">
+ <div className="flex items-center gap-2 mb-2">
+ <div className="p-2 rounded-xl bg-blue-500/20 text-blue-300">
+ <Wallet size={18} />
  </div>
- </CardHeader>
- <CardContent>
- <div className="text-lg lg:text-xl font-extrabold tracking-tight">{formatIDR(totalBalance)}</div>
- <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
- <span className="text-success font-semibold flex items-center"><ArrowUpRight size={12} /> +2.5%</span>
- dari bulan lalu
- </p>
- </CardContent>
- </Card>
+ <span className="text-xs font-bold uppercase tracking-wider text-blue-200">Sisa Saldo Bulanan</span>
+ </div>
+ <div className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-2 drop-shadow-lg">
+ {formatIDR(totalBalance)}
+ </div>
+ <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+ <ArrowUpRight size={12} className="text-emerald-400" />
+ <span className="text-[10px] font-semibold text-emerald-400">+2.5% dari bulan lalu</span>
+ </div>
+ </div>
 
- {/* Pemasukan */}
- <Card className="hover:-translate-y-1 hover:border-success/30">
- <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
- <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pemasukan Bulan Ini</span>
- <div className="p-2 rounded-xl bg-emerald-500/10 text-success">
- <TrendingUp size={16} />
+ {/* Pemasukan & Pengeluaran */}
+ <div className="flex gap-4 md:gap-8 w-full md:w-auto p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm mt-4 md:mt-0">
+ <div className="flex-1 md:flex-none">
+ <div className="flex items-center gap-2 mb-1">
+ <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+ <TrendingUp size={14} />
  </div>
- </CardHeader>
- <CardContent>
- <div className="text-lg lg:text-xl font-extrabold tracking-tight text-success">{formatIDR(totalIncome)}</div>
- <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
- <span className="text-success font-semibold flex items-center"><ArrowUpRight size={12} /> +12.4%</span>
- dari target
- </p>
- </CardContent>
- </Card>
-
- {/* Pengeluaran */}
- <Card className="hover:-translate-y-1 hover:border-danger/30">
- <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
- <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pengeluaran Bulan Ini</span>
- <div className="p-2 rounded-xl bg-rose-500/10 text-danger">
- <TrendingDown size={16} />
+ <span className="text-[10px] uppercase font-bold text-slate-300">Pemasukan</span>
  </div>
- </CardHeader>
- <CardContent>
- <div className="text-lg lg:text-xl font-extrabold tracking-tight text-danger">{formatIDR(totalExpense)}</div>
- <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
- <span className="text-success font-semibold flex items-center"><ArrowUpRight size={12} /> -5.2%</span>
- kurang dari limit budget
- </p>
- </CardContent>
- </Card>
-
- {/* Financial Health Score */}
- <Card className="hover:-translate-y-1 hover:border-success/30 relative overflow-hidden">
- <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
- <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Financial Score</span>
- <div className="p-2 rounded-xl bg-emerald-500/10 text-success">
- <Activity size={16} />
- </div>
- </CardHeader>
- <CardContent className="relative z-10">
- <div className="text-lg lg:text-xl font-extrabold tracking-tight text-emerald-500 flex items-baseline gap-1">
- {financialScore}
- <span className="text-[10px] text-slate-400 font-normal">/ 100</span>
+ <div className="text-lg md:text-xl font-bold text-white">{formatIDR(totalIncome)}</div>
  </div>
  
- <div className="w-full bg-slate-200/50 rounded-full h-1.5 mt-2.5 overflow-hidden">
- <motion.div 
- initial={{ width: 0 }}
- animate={{ width: `${financialScore}%` }}
- className="bg-emerald-500 h-1.5 rounded-full"
- />
+ <div className="w-px bg-white/10"></div>
+ 
+ <div className="flex-1 md:flex-none">
+ <div className="flex items-center gap-2 mb-1">
+ <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+ <TrendingDown size={14} />
+ </div>
+ <span className="text-[10px] uppercase font-bold text-slate-300">Pengeluaran</span>
+ </div>
+ <div className="text-lg md:text-xl font-bold text-white">{formatIDR(totalExpense)}</div>
+ </div>
+ </div>
+
  </div>
  </CardContent>
- <div className="absolute -right-6 -bottom-6 opacity-[0.03] [0.05] pointer-events-none">
- <Activity size={100} />
- </div>
  </Card>
 
- </div>
+ {/* 2. Mini Badges / Chips */}
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-blue-200 group">
+            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 group-hover:scale-110 transition-transform">
+              <TrendingUp size={20} />
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Fin. Score</p>
+              <p className="text-xl font-black text-blue-600 tracking-tight">{financialScore}<span className="text-xs font-bold text-blue-600/50">/100</span></p>
+            </div>
+          </div>
 
- {/* 2. Secondary metrics (Saving Rate, Cash Flow) */}
- <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
- <div className="p-4 rounded-xl border border-border bg-white/40 flex flex-col justify-center">
- <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Saving Rate</span>
- <div className="text-lg font-bold text-slate-800 mt-1 flex items-center gap-1.5">
- <Percent size={14} className="text-primary" />
- {savingRate.toFixed(1)}%
- </div>
- </div>
- <div className="p-4 rounded-xl border border-border bg-white/40 flex flex-col justify-center">
- <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Cash Flow</span>
- <div className="text-lg font-bold text-slate-800 mt-1">
- {formatIDR(totalIncome + totalExpense)}
- </div>
- </div>
- </div>
+          <div className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-emerald-200 group">
+            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
+              <PiggyBank size={20} />
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Saving Rate</p>
+              <p className="text-xl font-black text-emerald-600 tracking-tight">{savingRate.toFixed(1)}%</p>
+            </div>
+          </div>
+        </div>
 
  {/* Smart Anomaly Alerts Panel (Hidden when printing) */}
  {smartAlerts.length > 0 && (
- <div className="space-y-2.5 print:hidden">
+ <div className="space-y-2.5 print:hidden mb-6">
  {smartAlerts.map((alert) => (
-  <div 
-  key={alert.id} 
-  className={`p-3.5 rounded-xl border flex items-center gap-3 text-xs font-semibold ${
-  alert.type === 'duplicate' 
-  ? 'bg-amber-500/10 border-amber-500/20 text-warning' 
-  : 'bg-rose-500/10 border-rose-500/20 text-danger cursor-pointer hover:bg-rose-500/20'
-  }`}
-  onClick={() => {
-    if (alert.type === 'anomaly' && alert.data) {
-      setAnomalyData(alert.data);
-      setShowAnomalyModal(true);
-    }
-  }}
-  >
-  <AlertTriangle size={16} className="shrink-0 animate-bounce" />
-  <span>{alert.message}</span>
-  </div>
+ <div 
+ key={alert.id} 
+ className={`p-3.5 rounded-xl border flex items-center gap-3 text-xs font-semibold ${
+ alert.type === 'duplicate' 
+ ? 'bg-amber-500/10 border-amber-500/20 text-warning' 
+ : 'bg-rose-500/10 border-rose-500/20 text-danger cursor-pointer hover:bg-rose-500/20'
+ }`}
+ onClick={() => {
+ if (alert.type === 'anomaly' && alert.data) {
+ setAnomalyData(alert.data);
+ setShowAnomalyModal(true);
+ }
+ }}
+ >
+ <AlertTriangle size={16} className="shrink-0 animate-bounce" />
+ <span>{alert.message}</span>
+ </div>
  ))}
  </div>
  )}
 
- {/* 3. Charts Section */}
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
- 
- {/* Cash Flow Main Chart (Col span 2) */}
- <Card className="lg:col-span-2">
-  <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-  <div>
-  <CardTitle className="text-base md:text-lg">Cash Flow Trend</CardTitle>
-  <CardDescription className="text-[10px] md:text-xs">Pemasukan vs Pengeluaran periode terpilih</CardDescription>
-  </div>
-  
-  <div className="flex flex-wrap gap-1 bg-slate-200/50 p-1 rounded-lg print:hidden w-full md:w-auto">
-  {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(range => (
-  <button
-  key={range}
-  onClick={() => setCashFlowRange(range)}
-  className={`text-[9px] md:text-[10px] font-bold px-2 py-1.5 rounded-md transition-colors cursor-pointer uppercase flex-1 md:flex-none text-center ${
-  cashFlowRange === range 
-  ? 'bg-white shadow-sm text-slate-800 ' 
-  : 'text-slate-400 hover:text-slate-600 '
-  }`}
-  >
-  {range === 'daily' ? 'Harian' : range === 'weekly' ? 'Mingguan' : range === 'monthly' ? 'Bulanan' : 'Tahunan'}
-  </button>
-  ))}
-  </div>
+      {/* AI Insights Card (Full Width before Transaksi) */}
+      <Card className="w-full mb-6 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border-blue-500/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <Sparkles size={18} className="animate-pulse" />
+            AI Insight
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3.5 text-xs text-slate-600">
+          {!dailyInsight ? (
+            <p className="text-slate-400">Belum ada analisa finansial.</p>
+          ) : (
+            <div className="flex gap-2.5 p-3 rounded-lg bg-white/50 border border-primary/10">
+              <span className="text-primary shrink-0 mt-0.5">✦</span>
+              <p className="leading-relaxed">{dailyInsight}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+ {/* 3. Transaksi Terakhir (Full Width) */}
+ <Card className="w-full mb-6">
+ <CardHeader className="flex flex-row items-center justify-between">
+ <div>
+ <CardTitle>Transaksi Terakhir</CardTitle>
+ <CardDescription>Daftar transaksi manual dan AI terbaru</CardDescription>
+ </div>
+ <button 
+ onClick={() => setActiveTab('transactions')}
+ className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer print:hidden"
+ >
+ Lihat Semua
+ <ChevronRight size={14} />
+ </button>
  </CardHeader>
- <CardContent className="h-72">
- <ResponsiveContainer width="100%" height="100%">
- <AreaChart data={cashFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
- <defs>
- <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
- <stop offset="5%" stopColor={COLORS.success} stopOpacity={0.2}/>
- <stop offset="95%" stopColor={COLORS.success} stopOpacity={0}/>
- </linearGradient>
- <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
- <stop offset="5%" stopColor={COLORS.danger} stopOpacity={0.2}/>
- <stop offset="95%" stopColor={COLORS.danger} stopOpacity={0}/>
- </linearGradient>
- </defs>
- <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
- <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} dy={10} />
- <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `Rp${val/1000}k`} />
- <Tooltip 
- contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor, borderRadius: '12px', fontSize: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
- formatter={(val: any) => formatIDR(Number(val))}
- />
- <Area type="monotone" dataKey="Pemasukan" stroke={COLORS.success} strokeWidth={2} fillOpacity={1} fill="url(#colorInc)" />
- <Area type="monotone" dataKey="Pengeluaran" stroke={COLORS.danger} strokeWidth={2} fillOpacity={1} fill="url(#colorExp)" />
- </AreaChart>
- </ResponsiveContainer>
+ <CardContent>
+ {transactions.slice(0, 5).length === 0 ? (
+ <div className="text-center py-10 text-slate-400">
+ <Receipt size={36} className="mx-auto mb-2 opacity-25" />
+ <p className="text-xs font-semibold">Belum ada transaksi</p>
+ <button 
+ onClick={onAddTransactionClick}
+ className="text-xs text-primary hover:underline mt-2 font-bold cursor-pointer"
+ >
+ Catat transaksi pertama
+ </button>
+ </div>
+ ) : (
+ <div className="space-y-3">
+ {transactions.slice(0, 5).map((tx) => (
+ <div 
+ key={tx.id}
+ className="flex items-center justify-between p-3 rounded-xl border border-border/20 bg-slate-50/50 hover:bg-slate-100 transition-all duration-200"
+ >
+ <div className="flex items-center gap-3">
+ <div 
+ className="p-2.5 rounded-xl flex items-center justify-center animate-scaleIn" 
+ style={{ 
+ color: CATEGORY_COLORS[tx.category] || COLORS.primary,
+ backgroundColor: `${CATEGORY_COLORS[tx.category]}12` || `${COLORS.primary}12`
+ }}
+ >
+ {CATEGORY_ICONS[tx.category] || <Receipt size={16} />}
+ </div>
+ <div>
+ <p className="text-xs font-bold text-slate-800 line-clamp-1">{tx.description}</p>
+ <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+ <span className="font-semibold">{tx.category}</span>
+ <span>•</span>
+ <span>{safeDate(tx.date, { day: 'numeric', month: 'short' })}</span>
+ {tx.tags?.length > 0 && (
+ <>
+ <span>•</span>
+ <span className="text-primary font-bold">#{tx.tags[0]}</span>
+ </>
+ )}
+ </div>
+ </div>
+ </div>
+ 
+ <div className={`font-bold text-xs whitespace-nowrap ${tx.type === 'income' ? 'text-success' : tx.type === 'expense' ? 'text-danger' : 'text-primary'}`}>
+ {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '⇄'}
+ {formatIDR(tx.amount)}
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
  </CardContent>
  </Card>
+
+ {/* 4. Grid for the Rest: Pie Chart, AI Insight, Gamification Badges */}
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
  {/* Expenses Pie Chart */}
  <Card className="flex flex-col">
@@ -754,93 +774,8 @@ export function OverviewTab({
  </CardContent>
  </Card>
 
- </div>
-
- {/* ADVANCED VISUALIZATION SECTION: Line Trend Forecast & Radar Habits */}
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
- 
- {/* Balance Forecast Trend (Line Chart) */}
- <Card>
- <CardHeader>
- <CardTitle>Forecast Saldo (Proyeksi 6 Bulan)</CardTitle>
- <CardDescription>Prediksi perkembangan dana berdasarkan net-saving rate saat ini</CardDescription>
- </CardHeader>
- <CardContent className="h-64">
- <ResponsiveContainer width="100%" height="100%">
- <LineChart data={balanceTrendData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
- <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
- <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} dy={10} />
- <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `Rp${val/1000000}jt`} />
- <Tooltip formatter={(value: any) => formatIDR(Number(value))} contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor, borderRadius: '8px', fontSize: '12px' }} />
- <Line type="monotone" dataKey="Saldo" stroke={COLORS.primary} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
- </LineChart>
- </ResponsiveContainer>
- </CardContent>
- </Card>
-
- {/* Spending Habits Profiling (Radar Chart) */}
- <Card>
- <CardHeader>
- <CardTitle>Profil Kebiasaan Pengeluaran</CardTitle>
- <CardDescription>Analisa radar kebiasaan pengeluaran 6 kategori utama</CardDescription>
- </CardHeader>
- <CardContent className="h-64 flex items-center justify-center">
- {transactions.filter(t => t.type === 'expense').length === 0 ? (
- <p className="text-xs text-slate-400">Belum ada pengeluaran untuk dianalisa.</p>
- ) : (
- <ResponsiveContainer width="100%" height="100%">
- <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarChartData}>
- <PolarGrid stroke={gridColor} />
- <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#64748b' }} />
- <PolarRadiusAxis angle={30} domain={[0, 1500]} tick={{ fontSize: 8 }} />
- <Radar name="Pengeluaran (k)" dataKey="A" stroke={COLORS.indigo} fill={COLORS.indigo} fillOpacity={0.3} />
- </RadarChart>
- </ResponsiveContainer>
- )}
- </CardContent>
- </Card>
-
- </div>
-
- {/* GAMIFICATION & ACTIVITY HEATMAP GRID */}
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
- 
- {/* Calendar Heatmap (Col span 2) */}
- <Card className="lg:col-span-2">
- <CardHeader>
- <CardTitle>Calendar Heatmap (Aktivitas Catatan)</CardTitle>
- <CardDescription>Frekuensi pencatatan transaksi dalam 35 hari terakhir</CardDescription>
- </CardHeader>
- <CardContent>
- <div className="grid grid-cols-7 gap-2">
- {heatmapDays.map((day, idx) => (
- <div 
- key={idx} 
- title={`${day.date}: ${day.count} transaksi`}
- className={`aspect-square rounded-lg ${day.color} flex flex-col items-center justify-center p-1 border border-border/10 cursor-pointer hover:scale-105 transition-all duration-200`}
- >
- <span className="text-[9px] font-bold opacity-60">{day.date.split(' ')[0]}</span>
- {day.count > 0 && (
- <span className="text-[10px] font-extrabold">{day.count}</span>
- )}
- </div>
- ))}
- </div>
- 
- {/* Legend */}
- <div className="flex items-center justify-end gap-3 mt-4 text-[10px] text-slate-400 font-bold">
- <span>Mulai Jarang</span>
- <div className="w-3.5 h-3.5 rounded bg-slate-100 border border-border/10"></div>
- <div className="w-3.5 h-3.5 rounded bg-primary/20"></div>
- <div className="w-3.5 h-3.5 rounded bg-primary/50"></div>
- <div className="w-3.5 h-3.5 rounded bg-primary"></div>
- <span>Sangat Aktif</span>
- </div>
- </CardContent>
- </Card>
-
  {/* Gamification Badges Section */}
- <Card className="flex flex-col">
+ <Card className="flex flex-col lg:col-span-1">
  <CardHeader>
  <CardTitle className="flex items-center gap-2">
  <Award size={18} className="text-warning" />
@@ -870,141 +805,41 @@ export function OverviewTab({
  )}
  </CardContent>
  </Card>
-
  </div>
 
- {/* 4. Transactions List & Top Categories Breakdown */}
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
- 
- {/* Recent Transactions List (Col span 2) */}
- <Card className="lg:col-span-2">
- <CardHeader className="flex flex-row items-center justify-between">
- <div>
- <CardTitle>Transaksi Terakhir</CardTitle>
- <CardDescription>Daftar transaksi manual dan AI terbaru</CardDescription>
- </div>
- <button 
- onClick={() => setActiveTab('transactions')}
- className="text-xs text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer print:hidden"
- >
- Lihat Semua
- <ChevronRight size={14} />
- </button>
+ {/* Calendar Heatmap (Full Width) */}
+ <Card className="w-full">
+ <CardHeader>
+ <CardTitle>Calendar Heatmap (Aktivitas Catatan)</CardTitle>
+ <CardDescription>Frekuensi pencatatan transaksi dalam 35 hari terakhir</CardDescription>
  </CardHeader>
  <CardContent>
- {transactions.slice(0, 5).length === 0 ? (
- <div className="text-center py-10 text-slate-400">
- <Receipt size={36} className="mx-auto mb-2 opacity-25" />
- <p className="text-xs font-semibold">Belum ada transaksi</p>
- <button 
- onClick={onAddTransactionClick}
- className="text-xs text-primary hover:underline mt-2 font-bold cursor-pointer"
- >
- Catat transaksi pertama
- </button>
- </div>
- ) : (
- <div className="space-y-3">
- {transactions.slice(0, 5).map((tx) => (
+ <div className="grid grid-cols-7 gap-2 lg:gap-4 max-w-2xl">
+ {heatmapDays.map((day, idx) => (
  <div 
- key={tx.id}
- className="flex items-center justify-between p-3 rounded-xl border border-border/20 bg-slate-50/50 hover:bg-slate-100 transition-all duration-200"
+ key={idx} 
+ title={`${day.date}: ${day.count} transaksi`}
+ className={`aspect-square rounded-lg ${day.color} flex flex-col items-center justify-center p-1 border border-border/10 cursor-pointer hover:scale-105 transition-all duration-200`}
  >
- <div className="flex items-center gap-3">
- <div 
- className="p-2.5 rounded-xl flex items-center justify-center animate-scaleIn" 
- style={{ 
- color: CATEGORY_COLORS[tx.category] || COLORS.primary,
- backgroundColor: `${CATEGORY_COLORS[tx.category]}12` || `${COLORS.primary}12`
- }}
- >
- {CATEGORY_ICONS[tx.category] || <Receipt size={16} />}
- </div>
- <div>
- <p className="text-sm font-bold text-slate-800 ">{tx.description}</p>
- <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
- <span className="font-semibold">{tx.category}</span>
- <span>•</span>
- <span>{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
- {tx.tags?.length > 0 && (
- <>
- <span>•</span>
- <span className="text-primary font-bold">#{tx.tags[0]}</span>
- </>
+ <span className="text-[9px] font-bold opacity-60">{day.date.split(' ')[0]}</span>
+ {day.count > 0 && (
+ <span className="text-[10px] font-extrabold">{day.count}</span>
  )}
- </div>
- </div>
- </div>
- 
- <div className={`font-bold text-sm ${tx.type === 'income' ? 'text-success' : tx.type === 'expense' ? 'text-slate-800 ' : 'text-primary'}`}>
- {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '⇄'}
- {formatIDR(tx.amount)}
- </div>
  </div>
  ))}
  </div>
- )}
+ 
+ {/* Legend */}
+ <div className="flex items-center justify-start gap-3 mt-4 text-[10px] text-slate-400 font-bold max-w-2xl">
+ <span>Mulai Jarang</span>
+ <div className="w-3.5 h-3.5 rounded bg-slate-100 border border-border/10"></div>
+ <div className="w-3.5 h-3.5 rounded bg-primary/20"></div>
+ <div className="w-3.5 h-3.5 rounded bg-primary/50"></div>
+ <div className="w-3.5 h-3.5 rounded bg-primary"></div>
+ <span>Sangat Aktif</span>
+ </div>
  </CardContent>
  </Card>
-
- {/* AI Insight and target list */}
- <div className="space-y-6">
- {/* AI Insights Card */}
- <Card className="bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border-blue-500/10">
- <CardHeader>
- <CardTitle className="flex items-center gap-2 text-primary">
- <Sparkles size={18} className="animate-pulse" />
- AI Insight
- </CardTitle>
- </CardHeader>
- <CardContent className="space-y-3.5 text-xs text-slate-600 ">
- {!dailyInsight ? (
- <p className="text-slate-400">Belum ada analisa finansial.</p>
- ) : (
- <div className="flex gap-2.5 p-3 rounded-lg bg-white/50 border border-primary/10">
- <span className="text-primary shrink-0 mt-0.5">✦</span>
- <p className="leading-relaxed">{dailyInsight}</p>
- </div>
- )}
- </CardContent>
- </Card>
-
- {/* Saving Goals Progress list */}
- <Card>
- <CardHeader>
- <CardTitle>Tabungan Goal</CardTitle>
- </CardHeader>
- <CardContent className="space-y-4">
- {goals.length === 0 ? (
- <p className="text-xs text-slate-400 text-center py-4">Belum ada target tabungan</p>
- ) : (
- goals.slice(0, 3).map((goal) => {
- const percent = Math.min(Math.round((goal.current / goal.target) * 100), 100);
- return (
- <div key={goal.id} className="space-y-2">
- <div className="flex justify-between items-center text-xs">
- <span className="font-bold text-slate-800 ">{goal.name}</span>
- <span className="text-slate-400">{percent}%</span>
- </div>
- <div className="w-full bg-slate-200/50 rounded-full h-2 overflow-hidden">
- <div 
- className="bg-primary h-2 rounded-full transition-all duration-300"
- style={{ width: `${percent}%` }}
- />
- </div>
- <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
- <span>{formatIDR(goal.current)}</span>
- <span>target {formatIDR(goal.target)}</span>
- </div>
- </div>
- );
- })
- )}
- </CardContent>
- </Card>
- </div>
-
- </div>
 
  </div>
 
@@ -1142,7 +977,7 @@ export function OverviewTab({
                     <div>
                       <h4 className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-1">{tx.description}</h4>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[10px] text-slate-500">{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                        <span className="text-[10px] text-slate-500">{safeDate(tx.date, { day: 'numeric', month: 'short' })}</span>
                         <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                         <span className="text-[10px] text-slate-500 font-medium">{tx.category}</span>
                       </div>
@@ -1202,7 +1037,7 @@ export function OverviewTab({
                 <div>
                   <p className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-1">{t.description}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] text-slate-500">{new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                    <span className="text-[10px] text-slate-500">{safeDate(t.date, { day: 'numeric', month: 'short' })}</span>
                     <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                     <span className="text-[10px] text-slate-500 font-medium">{t.category}</span>
                   </div>

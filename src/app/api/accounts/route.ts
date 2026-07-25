@@ -1,37 +1,40 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const email = searchParams.get('email');
-
-  if (!email) return NextResponse.json({ error: 'Email wajib disertakan' }, { status: 400 });
+  const session = await getSession();
+  
+  if (!session || !session.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 });
-
     const accounts = await prisma.account.findMany({
-      where: { userId: user.id },
+      where: { userId: session.id },
       orderBy: { createdAt: 'asc' }
     });
 
     return NextResponse.json(accounts);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Gagal mengambil akun' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
-  try {
-    const { email, name, type, balance } = await req.json();
+  const session = await getSession();
+  
+  if (!session || !session.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 });
+  try {
+    const { name, type, balance } = await req.json();
 
     const newAccount = await prisma.account.create({
       data: {
-        userId: user.id,
+        userId: session.id,
         name,
         type,
         balance: parseFloat(balance),
@@ -40,6 +43,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(newAccount);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Gagal menambah akun' }, { status: 500 });
   }
 }

@@ -48,15 +48,41 @@ body {
 
 /* Premium card shadow styling */
 .glass {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05), 0 1px 3px 0 rgba(0, 0, 0, 0.02);
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
 }
 
 .glass:hover {
   box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.08), 0 1px 4px 0 rgba(0, 0, 0, 0.02);
+  transform: translateY(-2px) scale(1.01);
 }
+
+/* Background blob animations */
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+.animate-blob {
+  animation: blob 7s infinite;
+}
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 
 .glass-premium {
   background: #FFFFFF;

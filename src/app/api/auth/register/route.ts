@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendVerificationEmail } from '@/lib/mailer';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 export async function POST(req: Request) {
@@ -20,8 +21,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email ini sudah terdaftar!' }, { status: 400 });
     }
 
-    // Simple hash for password
-    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    // Hash password with bcryptjs
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     
     // Generate verification token
     const token = crypto.randomBytes(32).toString('hex');
@@ -35,6 +37,28 @@ export async function POST(req: Request) {
         verificationToken: token,
         isVerified: false,
       },
+    });
+
+    // Create default categories for new user
+    const defaultCategories = [
+      { name: 'Makanan & Minuman', type: 'expense', icon: 'pizza', color: '#ff6b6b' },
+      { name: 'Transportasi', type: 'expense', icon: 'car', color: '#4dabf7' },
+      { name: 'Belanja', type: 'expense', icon: 'shopping-cart', color: '#fcc419' },
+      { name: 'Tagihan & Utilitas', type: 'expense', icon: 'zap', color: '#fa5252' },
+      { name: 'Hiburan', type: 'expense', icon: 'film', color: '#be4bdb' },
+      { name: 'Pekerjaan', type: 'expense', icon: 'briefcase', color: '#4c6ef5' },
+      { name: 'Kesehatan', type: 'expense', icon: 'heart', color: '#e64980' },
+      { name: 'Pendidikan', type: 'expense', icon: 'book', color: '#fd7e14' },
+      { name: 'Gaji', type: 'income', icon: 'wallet', color: '#51cf66' },
+      { name: 'Investasi', type: 'income', icon: 'trending-up', color: '#20c997' },
+      { name: 'Lainnya', type: 'expense', icon: 'more-horizontal', color: '#868e96' }
+    ];
+
+    await prisma.category.createMany({
+      data: defaultCategories.map(cat => ({
+        ...cat,
+        userId: user.id
+      }))
     });
 
     // Send verification email

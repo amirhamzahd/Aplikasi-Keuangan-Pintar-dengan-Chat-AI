@@ -68,7 +68,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             disabled ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'cursor-pointer hover:border-primary/50 hover:shadow focus-within:ring-2 focus-within:ring-primary/45 focus-within:border-primary'
           } ${error ? 'border-danger focus-within:ring-danger/45 focus-within:border-danger' : 'border-slate-200'} ${className}`}
         >
-          <span className="pr-4 font-medium text-slate-700 text-left whitespace-normal leading-tight">{selectedOption?.label || 'Pilih opsi...'}</span>
+          <span className="pr-4 font-medium text-slate-700 text-left truncate leading-tight">{selectedOption?.label || 'Pilih opsi...'}</span>
           <ChevronDown 
             size={16} 
             className={`text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`} 

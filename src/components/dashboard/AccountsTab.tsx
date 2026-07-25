@@ -8,7 +8,7 @@ import { Input } from '../ui/Input';
 import { CurrencyInput } from '../ui/CurrencyInput';
 import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
-import { Plus, Edit2, Trash2, ArrowRightLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowRightLeft, Landmark, Users, Gem } from 'lucide-react';
 
 // Map keywords to local SVG filenames in /bank-icons/
 const BANK_ICON_MAP: Record<string, string> = {
@@ -212,7 +212,7 @@ export function AccountsTab() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900">Kelola Rekening</h2>
+          <h2 className="text-lg font-bold text-slate-800">Kelola Rekening</h2>
           <p className="text-xs text-slate-500 mt-0.5">Tambah dan kelola rekening bank, e-wallet, dan kas tunai Anda</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -225,61 +225,77 @@ export function AccountsTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl shadow-md text-white">
-          <p className="text-xs font-semibold opacity-90 uppercase tracking-wider mb-1">Total Saldo Tersedia (Fisik)</p>
-          <h3 className="text-2xl font-black">{formatIDR(totalBalance)}</h3>
-        </div>
-
-        <div className="p-4 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-md text-white">
-          <p className="text-xs font-semibold opacity-90 uppercase tracking-wider mb-1">Uang Di Orang Lain (Piutang)</p>
-          <h3 className="text-2xl font-black">{formatIDR(totalPiutang)}</h3>
+      {/* Top Card: Combined Net Worth & Balances */}
+      <Card glass={false} className="relative overflow-hidden group bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 text-white border-0 shadow-xl mb-6 rounded-3xl">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
+          <Gem size={180} strokeWidth={1} />
         </div>
         
-        <div className="p-4 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl shadow-md text-white">
-          <p className="text-xs font-semibold opacity-90 uppercase tracking-wider mb-1">Kekayaan Bersih (Net Worth)</p>
-          <h3 className="text-2xl font-black">{formatIDR(totalBalance + totalPiutang)}</h3>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {accounts.map((acc) => (
-          <Card key={acc.id} className="hover:border-blue-500/30 hover:shadow-lg transition-all duration-300 relative group bg-white border border-slate-100 rounded-3xl">
-            <CardContent className="!p-6 flex items-center gap-4 min-h-[96px]">
-              <div className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl bg-[#F4F7FE] flex items-center justify-center shrink-0 overflow-hidden shadow-inner border border-slate-100/50">
-                <BankIcon name={acc.name} type={acc.type} />
+        <CardContent className="p-6 pt-10 sm:p-8 sm:pt-12 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-indigo-200/80">
+                <Gem size={18} />
+                <h3 className="text-sm font-bold uppercase tracking-widest">Kekayaan Bersih</h3>
               </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-[15px] font-bold text-slate-900 leading-tight truncate">{acc.name}</h4>
-                <p className="text-[13px] font-semibold text-slate-500 mt-1 truncate">{formatIDR(acc.balance)}</p>
-                <div className="mt-2">
-                  <span className="inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border border-slate-100 bg-slate-50 text-slate-400 tracking-wider">
-                    {acc.type}
-                  </span>
-                </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl sm:text-5xl font-black tracking-tight">{formatIDR(totalBalance + totalPiutang)}</span>
               </div>
-            </CardContent>
+            </div>
             
-            {/* Edit Button Bottom Right */}
+            <div className="flex items-center gap-6 md:gap-10 pt-4 md:pt-0 border-t md:border-t-0 border-indigo-400/20">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-indigo-200/80 mb-1">
+                  <Landmark size={14} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Saldo Fisik</span>
+                </div>
+                <p className="text-lg font-bold text-white">{formatIDR(totalBalance)}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-indigo-200/80 mb-1">
+                  <Users size={14} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Piutang</span>
+                </div>
+                <p className="text-lg font-bold text-white">{formatIDR(totalPiutang)}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+        {accounts.map((acc) => (
+          <div key={acc.id} className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col items-center justify-center text-center shadow-sm hover:shadow-md hover:border-indigo-500/30 transition-all duration-300 relative group cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center mb-3 shadow-inner border border-slate-100/50">
+              <BankIcon name={acc.name} type={acc.type} />
+            </div>
+            <h4 className="text-xs font-bold text-slate-800 truncate w-full">{acc.name}</h4>
+            <p className="text-[11px] font-bold text-slate-500 mt-0.5">{formatIDR(acc.balance)}</p>
+            <div className="mt-1.5">
+              <span className="inline-block text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border border-slate-100 bg-slate-50 text-slate-400 tracking-wider">
+                {acc.type}
+              </span>
+            </div>
+            
+            {/* Edit Button */}
             <button 
               onClick={() => handleOpenEdit(acc)}
-              className="absolute bottom-5 right-5 p-1.5 text-slate-300 hover:text-primary transition cursor-pointer"
+              className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 bg-white shadow-sm rounded-full transition-all"
               title="Edit Rekening"
             >
-              <Edit2 size={15} strokeWidth={2.5} />
+              <Edit2 size={14} />
             </button>
-            
-            {/* Delete button (Top Right) if balance 0 */}
+            {/* Delete button (Top Left) if balance 0 */}
             {acc.balance === 0 && (
               <button 
                 onClick={() => handleDelete(acc.id, acc.name)}
-                className="absolute top-5 right-5 p-1.5 text-slate-300 hover:text-danger opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                className="absolute top-3 left-3 p-1.5 opacity-0 group-hover:opacity-100 text-danger/70 hover:text-danger hover:bg-rose-50 rounded-full transition cursor-pointer"
                 title="Hapus Rekening"
               >
-                <Trash2 size={15} />
+                <Trash2 size={14} />
               </button>
             )}
-          </Card>
+          </div>
         ))}
       </div>
 
