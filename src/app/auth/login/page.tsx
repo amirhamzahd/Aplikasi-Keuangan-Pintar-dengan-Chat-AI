@@ -48,24 +48,38 @@ export default function LoginPage() {
   };
 
   const handleGoogleSSO = useGoogleLogin({
+    ux_mode: 'redirect',
+    redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/auth/login` : 'https://project-4vdfh.vercel.app/auth/login',
     onSuccess: async (tokenResponse) => {
-      setIsGoogleLoading(true);
-      setError('');
-      try {
-        const res = await loginWithGoogle(tokenResponse.access_token);
-        if (!res.success) {
-          setError(res.error || 'Terjadi kesalahan saat login dengan Google.');
-        }
-      } catch (err) {
-        setError('Koneksi bermasalah. Coba lagi.');
-      } finally {
-        setIsGoogleLoading(false);
-      }
+      // onSuccess only fires in popup mode, but we leave it here just in case
     },
     onError: () => {
       setError('Login Google dibatalkan atau gagal.');
     },
   });
+
+  // Handle redirect response for Google SSO
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash.includes('access_token=')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+          setIsGoogleLoading(true);
+          loginWithGoogle(accessToken)
+            .then(res => {
+              if (!res.success) setError(res.error || 'Terjadi kesalahan saat login dengan Google.');
+            })
+            .catch(() => setError('Koneksi bermasalah. Coba lagi.'))
+            .finally(() => {
+              setIsGoogleLoading(false);
+              window.history.replaceState(null, '', window.location.pathname);
+            });
+        }
+      }
+    }
+  }, [loginWithGoogle]);
 
   return (
     <div className="flex-1 flex flex-col justify-between min-h-screen px-4 bg-gradient-to-tr from-slate-100 via-slate-50 to-blue-50/20 relative overflow-hidden">
