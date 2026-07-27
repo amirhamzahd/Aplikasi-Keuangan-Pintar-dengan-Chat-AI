@@ -29,7 +29,9 @@ export function BillsTab() {
     payDebtPartial,
     toggleDebtStatus,
     accounts,
-    requestConfirm
+    transactions,
+    requestConfirm,
+    isBalanceHidden
   } = useTransactions();
 
   // Subscription Form States (Add)
@@ -62,7 +64,8 @@ export function BillsTab() {
   const [paySubId, setPaySubId] = useState('');
   const [paySubAccountId, setPaySubAccountId] = useState('');
 
-  const formatIDR = (num: number) => {
+  const formatIDR = (num: number, forceShow: boolean = false) => {
+    if (isBalanceHidden && !forceShow) return 'Rp ••••••••';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
   };
 

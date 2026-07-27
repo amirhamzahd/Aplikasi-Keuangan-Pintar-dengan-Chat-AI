@@ -13,7 +13,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Zap, ShieldAlert, Sparkles, Edit2, Trash2 } from 'lucide-react';
 
 export function BudgetTab() {
-  const { budgets, transactions, setBudget, editBudget, deleteBudget, categories, requestConfirm, isDateInCurrentPeriod } = useTransactions();
+  const { budgets, transactions, setBudget, editBudget, deleteBudget, categories, requestConfirm, isDateInCurrentPeriod, isBalanceHidden } = useTransactions();
   
   const expenseCategories = categories.filter(c => c.type === 'expense');
 
@@ -26,7 +26,8 @@ export function BudgetTab() {
   const [editingBudget, setEditingBudget] = useState<{ id: string; category: string; amount: number } | null>(null);
   const [editAmount, setEditAmount] = useState('');
 
-  const formatIDR = (num: number) => {
+  const formatIDR = (num: number, forceShow: boolean = false) => {
+    if (isBalanceHidden && !forceShow) return 'Rp ••••••••';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
   };
 

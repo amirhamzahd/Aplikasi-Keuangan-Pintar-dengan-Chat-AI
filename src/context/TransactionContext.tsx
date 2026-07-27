@@ -71,6 +71,9 @@ interface TransactionContextType {
   refreshData: () => void;
   showToast: (message: string, type?: 'success' | 'danger' | 'warning', actionLabel?: string, onAction?: () => void) => void;
   requestConfirm: (message: string, onConfirm: () => void) => void;
+  
+  isBalanceHidden: boolean;
+  toggleBalanceVisibility: () => void;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -95,6 +98,23 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
   const [lastDeletedTx, setLastDeletedTx] = useState<(Omit<DbTransaction, 'id'> & { date?: string | Date }) | null>(null);
 
   const [confirmOptions, setConfirmOptions] = useState<{message: string, onConfirm: () => void} | null>(null);
+
+  const [isBalanceHidden, setIsBalanceHidden] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('isBalanceHidden');
+    if (stored !== null) {
+      setIsBalanceHidden(stored === 'true');
+    }
+  }, []);
+
+  const toggleBalanceVisibility = useCallback(() => {
+    setIsBalanceHidden(prev => {
+      const newVal = !prev;
+      localStorage.setItem('isBalanceHidden', newVal.toString());
+      return newVal;
+    });
+  }, []);
 
   const requestConfirm = useCallback((message: string, onConfirm: () => void) => {
     setConfirmOptions({ message, onConfirm });
@@ -576,14 +596,11 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
     // 2. Adjust balance for initial loan
     if (debt.accountId) {
       const isHutang = debt.type === 'debt';
-      await mutateDb('transaction', 'CREATE', {
-        description: isHutang ? `Pinjaman dari ${debt.person}` : `Memberi pinjaman ke ${debt.person}`,
-        amount: debt.amount,
-        type: isHutang ? 'income' : 'expense',
-        accountId: debt.accountId,
-        category: 'Hutang/Piutang',
-        tags: isHutang ? 'hutang, masuk' : 'piutang, keluar'
-      });
+      const sourceAcc = accounts.find(a => a.id === debt.accountId);
+      if (sourceAcc) {
+        const newBalance = isHutang ? sourceAcc.balance + debt.amount : sourceAcc.balance - debt.amount;
+        await mutateDb('account', 'UPDATE', { balance: newBalance }, debt.accountId);
+      }
     }
 
     showToast(`Catatan hutang-piutang untuk "${debt.person}" berhasil ditambahkan!`, 'success');
@@ -612,19 +629,15 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
     const accId = targetAccountId || d.accountId;
     if (accId) {
       const sourceAcc = accounts.find(a => a.id === accId);
-      if (d.type === 'debt' && sourceAcc && sourceAcc.balance < d.amount) {
-        showToast(`Pelunasan Gagal! Saldo di ${sourceAcc.name} tidak mencukupi.`, 'danger');
-        return;
+      if (sourceAcc) {
+        if (d.type === 'debt' && sourceAcc.balance < d.amount) {
+          showToast(`Pelunasan Gagal! Saldo di ${sourceAcc.name} tidak mencukupi.`, 'danger');
+          return;
+        }
+        
+        const newBalance = d.type === 'debt' ? sourceAcc.balance - d.amount : sourceAcc.balance + d.amount;
+        await mutateDb('account', 'UPDATE', { balance: newBalance }, accId);
       }
-      
-      await mutateDb('transaction', 'CREATE', {
-        description: `Pelunasan ${d.type === 'debt' ? 'Hutang ke' : 'Piutang dari'} ${d.person}`,
-        amount: d.amount,
-        type: d.type === 'debt' ? 'expense' : 'income',
-        accountId: accId,
-        category: 'Hutang/Piutang',
-        tags: 'pelunasan, hutang'
-      });
     }
 
     await mutateDb('debt', 'UPDATE', { status: 'paid', accountId: accId }, id);
@@ -637,19 +650,15 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
     if (!debt) return;
     
     const sourceAcc = accounts.find(a => a.id === accountId);
-    if (debt.type === 'debt' && sourceAcc && sourceAcc.balance < amount) {
-      showToast(`Cicilan Gagal! Saldo di ${sourceAcc.name} tidak mencukupi.`, 'danger');
-      return;
+    if (sourceAcc) {
+      if (debt.type === 'debt' && sourceAcc.balance < amount) {
+        showToast(`Cicilan Gagal! Saldo di ${sourceAcc.name} tidak mencukupi.`, 'danger');
+        return;
+      }
+      
+      const newBalance = debt.type === 'debt' ? sourceAcc.balance - amount : sourceAcc.balance + amount;
+      await mutateDb('account', 'UPDATE', { balance: newBalance }, accountId);
     }
-    
-    await mutateDb('transaction', 'CREATE', {
-      description: `Cicilan ${debt.type === 'debt' ? 'Hutang ke' : 'Piutang dari'} ${debt.person}`,
-      amount: amount,
-      type: debt.type === 'debt' ? 'expense' : 'income',
-      accountId: accountId,
-      category: 'Hutang/Piutang',
-      tags: 'cicilan, hutang'
-    });
 
     const newAmount = debt.amount - amount;
     const newStatus = newAmount <= 0 ? 'paid' : 'pending';
@@ -668,26 +677,17 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
     const accId = d.accountId || accounts[0]?.id;
 
     if (accId) {
-      if (newStatus === 'paid') {
-        // Tandai Lunas manual -> Create payment transaction
-        await mutateDb('transaction', 'CREATE', {
-          description: `Pelunasan Manual ${isHutang ? 'Hutang ke' : 'Piutang dari'} ${d.person}`,
-          amount: d.amount,
-          type: isHutang ? 'expense' : 'income',
-          accountId: accId,
-          category: 'Hutang/Piutang',
-          tags: 'pelunasan, hutang'
-        });
-      } else {
-        // Batal Lunas -> Create reverse transaction
-        await mutateDb('transaction', 'CREATE', {
-          description: `Batal Lunas ${isHutang ? 'Hutang ke' : 'Piutang dari'} ${d.person}`,
-          amount: d.amount,
-          type: isHutang ? 'income' : 'expense',
-          accountId: accId,
-          category: 'Hutang/Piutang',
-          tags: 'batal lunas, hutang'
-        });
+      const sourceAcc = accounts.find(a => a.id === accId);
+      if (sourceAcc) {
+        let newBalance = sourceAcc.balance;
+        if (newStatus === 'paid') {
+          // Tandai Lunas manual -> Pay back/get paid
+          newBalance = isHutang ? sourceAcc.balance - d.amount : sourceAcc.balance + d.amount;
+        } else {
+          // Batal Lunas -> Reverse payment
+          newBalance = isHutang ? sourceAcc.balance + d.amount : sourceAcc.balance - d.amount;
+        }
+        await mutateDb('account', 'UPDATE', { balance: newBalance }, accId);
       }
     }
 
@@ -753,7 +753,12 @@ export function TransactionProvider({ children }: { children: React.ReactNode })
         addSubscription, editSubscription, deleteSubscription, toggleSubscriptionPayment,
         addDebt, editDebt, deleteDebt, payDebt, payDebtPartial, toggleDebtStatus,
         addCategory, editCategory, deleteCategory,
-        markNotificationsAsRead, refreshData, showToast, requestConfirm
+        markNotificationsAsRead,
+        refreshData,
+        showToast,
+        requestConfirm,
+        isBalanceHidden,
+        toggleBalanceVisibility
       }}
     >
       {children}

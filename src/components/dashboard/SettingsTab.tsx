@@ -9,7 +9,7 @@ import { CalendarDays, Save, Settings, AlertTriangle, Trash2, Info, Repeat, Book
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function SettingsTab() {
-  const { currentPeriodStart, currentPeriodEnd, updatePeriodRange, resetData } = useTransactions();
+  const { currentPeriodStart, currentPeriodEnd, updatePeriodRange, resetData, showToast } = useTransactions();
   const { user } = useAuth();
   
   const [startDate, setStartDate] = useState<string>('');
@@ -90,12 +90,21 @@ export function SettingsTab() {
                 )}
               </p>
             </div>
-            <a 
-              href="/dashboard/billing" 
-              className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 transition shadow-sm"
-            >
-              Kelola Langganan <ArrowRight size={16} />
-            </a>
+            {user?.planType === 'PRO' ? (
+              <button 
+                onClick={() => showToast('Anda Sudah Langganan Tertinggi.', 'success')}
+                className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 transition shadow-sm"
+              >
+                Kelola Langganan <ArrowRight size={16} />
+              </button>
+            ) : (
+              <a 
+                href="/dashboard/billing" 
+                className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 transition shadow-sm"
+              >
+                Kelola Langganan <ArrowRight size={16} />
+              </a>
+            )}
           </div>
         </CardContent>
       </Card>

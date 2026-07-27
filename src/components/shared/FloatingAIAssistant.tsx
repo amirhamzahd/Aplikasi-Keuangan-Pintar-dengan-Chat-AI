@@ -23,19 +23,22 @@ interface Message {
 }
 
 const renderFormattedText = (text: string) => {
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return parts.map((part, index) => {
-    if (index % 2 === 1) {
-      return <strong key={index} className="font-bold">{part}</strong>;
+  return text.split('\n').map((line, i) => {
+    const isBullet = line.match(/^[\-\*]\s/);
+    const content = isBullet ? line.substring(2) : line;
+    
+    const parts = content.split(/\*\*(.*?)\*\*/g);
+    const renderedLine = parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return <strong key={index} className="font-bold text-slate-900">{part}</strong>;
+      }
+      return <span key={index}>{part}</span>;
+    });
+
+    if (isBullet) {
+      return <div key={i} className="pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-slate-400 my-1">{renderedLine}</div>;
     }
-    return <span key={index}>{
-      part.split('\n').map((line, i, arr) => (
-        <React.Fragment key={i}>
-          {line}
-          {i !== arr.length - 1 && <br />}
-        </React.Fragment>
-      ))
-    }</span>;
+    return <span key={i}>{renderedLine}<br /></span>;
   });
 };
 

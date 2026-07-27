@@ -8,7 +8,7 @@ import { Input } from '../ui/Input';
 import { Download, FileJson, FileText, Printer, ArrowUpRight, ArrowDownRight, Wallet, Calendar, CheckCircle2 } from 'lucide-react';
 
 export function ReportsTab() {
-  const { transactions, accounts, debts, subscriptions, currentPeriodStart, currentPeriodEnd } = useTransactions();
+  const { transactions, accounts, debts, subscriptions, currentPeriodStart, currentPeriodEnd, isBalanceHidden } = useTransactions();
 
   // DEFAULT REPORT STATE
   const totalIncome = useMemo(() => transactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0), [transactions]);
@@ -55,7 +55,8 @@ export function ReportsTab() {
   const customTotalIncome = useMemo(() => filteredTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0), [filteredTransactions]);
   const customTotalExpense = useMemo(() => filteredTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0), [filteredTransactions]);
 
-  const formatIDR = (num: number) => {
+  const formatIDR = (num: number, forceShow: boolean = false) => {
+    if (isBalanceHidden && !forceShow) return 'Rp ••••••••';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
   };
 
@@ -199,6 +200,16 @@ export function ReportsTab() {
             >
               Terapkan
             </Button>
+            {showReadyMessage && (
+              <div className="flex items-center gap-2 shrink-0">
+                <Button onClick={handleExportCSVCustom} variant="secondary" className="text-xs font-bold h-11 px-4 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all">
+                  <FileText size={14} className="text-emerald-500" /> Export CSV
+                </Button>
+                <Button onClick={() => handlePrintPDF('custom')} variant="primary" className="text-xs font-bold h-11 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 text-white flex items-center gap-2 shadow-sm border-0 transition-all">
+                  <Printer size={14} /> Cetak / PDF
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -214,15 +225,6 @@ export function ReportsTab() {
             </span>
           </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={handleExportCSVCustom} variant="secondary" className="text-xs font-bold py-2 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 flex items-center gap-2 shadow-sm">
-            <FileText size={14} /> Export CSV
-          </Button>
-          <Button onClick={() => handlePrintPDF('custom')} variant="primary" className="text-xs font-bold py-2 rounded-lg bg-danger hover:bg-danger/90 text-white flex items-center gap-2 shadow-sm border-0">
-            <Printer size={14} /> Cetak / PDF
-          </Button>
-        </div>
       </section>
 
       {/* Print View Only (Hidden on screen) */}

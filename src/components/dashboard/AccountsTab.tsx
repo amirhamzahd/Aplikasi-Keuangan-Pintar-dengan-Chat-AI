@@ -70,7 +70,7 @@ function BankIcon({ name, type }: { name: string, type: string }) {
 }
 
 export function AccountsTab() {
-  const { accounts, addAccount, editAccount, deleteAccount, transactions, requestConfirm, addTransaction, debts } = useTransactions();
+  const { accounts, addAccount, editAccount, deleteAccount, transactions, requestConfirm, addTransaction, debts, isBalanceHidden } = useTransactions();
 
   // Add State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -97,7 +97,8 @@ export function AccountsTab() {
   const [transferDesc, setTransferDesc] = useState('Tarik / Pindah Tunai');
   const [transferDate, setTransferDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const formatIDR = (num: number) => {
+  const formatIDR = (num: number, forceShow: boolean = false) => {
+    if (isBalanceHidden && !forceShow) return 'Rp ••••••••';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
   };
 
@@ -210,18 +211,10 @@ export function AccountsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Kelola Rekening</h2>
           <p className="text-xs text-slate-500 mt-0.5">Tambah dan kelola rekening bank, e-wallet, dan kas tunai Anda</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => setShowTransferModal(true)} className="text-xs font-bold py-2 px-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-md border-0 rounded-full transition-all">
-            <ArrowRightLeft size={14} className="mr-1.5" /> Transfer Saldo
-          </Button>
-          <Button variant="primary" onClick={() => setShowAddModal(true)} className="text-xs font-semibold py-2 px-4 rounded-full shadow-md bg-[#2563EB] hover:bg-[#1D4ED8]">
-            <Plus size={16} className="mr-1" /> Tambah Rekening
-          </Button>
         </div>
       </div>
 
@@ -263,6 +256,16 @@ export function AccountsTab() {
         </CardContent>
       </Card>
 
+      <div className="grid grid-cols-2 gap-3 w-full">
+        <Button onClick={() => setShowTransferModal(true)} className="text-[11px] sm:text-xs font-bold py-3 sm:py-2.5 rounded-2xl bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 text-white shadow-md hover:shadow-lg hover:opacity-95 border-0 w-full flex items-center justify-center gap-1 sm:gap-2 transition-all">
+          <ArrowRightLeft size={14} className="text-white" /> Transfer Saldo
+        </Button>
+        <Button onClick={() => setShowAddModal(true)} className="text-[11px] sm:text-xs font-bold py-3 sm:py-2.5 rounded-2xl bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 text-white shadow-md hover:shadow-lg hover:opacity-95 border-0 w-full flex items-center justify-center gap-1 sm:gap-2 transition-all">
+          <Plus size={16} className="text-white" /> Tambah Rekening
+        </Button>
+      </div>
+
+
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
         {accounts.map((acc) => (
           <div key={acc.id} className="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col items-center justify-center text-center shadow-sm hover:shadow-md hover:border-indigo-500/30 transition-all duration-300 relative group cursor-pointer">
@@ -276,25 +279,29 @@ export function AccountsTab() {
                 {acc.type}
               </span>
             </div>
-            
-            {/* Edit Button */}
-            <button 
-              onClick={() => handleOpenEdit(acc)}
-              className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 bg-white shadow-sm rounded-full transition-all"
-              title="Edit Rekening"
-            >
-              <Edit2 size={14} />
-            </button>
-            {/* Delete button (Top Left) if balance 0 */}
-            {acc.balance === 0 && (
+            <div className="absolute -right-1.5 -top-1.5 flex flex-col gap-1 z-10">
+              {/* Edit Button */}
               <button 
-                onClick={() => handleDelete(acc.id, acc.name)}
-                className="absolute top-3 left-3 p-1.5 opacity-0 group-hover:opacity-100 text-danger/70 hover:text-danger hover:bg-rose-50 rounded-full transition cursor-pointer"
-                title="Hapus Rekening"
+                onClick={(e) => { e.stopPropagation(); handleOpenEdit(acc); }}
+                className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white shadow-sm border border-slate-100/80 rounded-full transition-all"
+                title="Edit Rekening"
               >
-                <Trash2 size={14} />
+                <Edit2 size={12} />
               </button>
-            )}
+              {/* Delete button (Only shown if balance === 0) */}
+              {acc.balance === 0 && (
+                <button 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    handleDelete(acc.id, acc.name); 
+                  }}
+                  className="p-1.5 shadow-sm border border-slate-100/80 rounded-full transition-all text-danger/80 hover:text-danger hover:bg-rose-50 bg-white cursor-pointer"
+                  title="Hapus Rekening"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

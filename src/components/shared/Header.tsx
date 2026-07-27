@@ -68,7 +68,7 @@ export function Header({ userName }: HeaderProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-[calc(100vw-48px)] sm:w-80 max-w-[360px] glass rounded-2xl shadow-xl border border-border/30 overflow-hidden z-40 origin-top-right"
+                  className="absolute right-0 mt-2 w-[calc(100vw-48px)] sm:w-80 max-w-[360px] bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-40 origin-top-right"
                 >
                   <div className="p-4 border-b border-border/20 flex items-center justify-between">
                     <span className="font-bold text-sm text-slate-800">Notifikasi</span>

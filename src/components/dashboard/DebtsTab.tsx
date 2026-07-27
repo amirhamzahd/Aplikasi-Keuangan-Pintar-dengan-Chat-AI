@@ -29,7 +29,8 @@ export function DebtsTab() {
     payDebtPartial,
     toggleDebtStatus,
     accounts,
-    requestConfirm
+    requestConfirm,
+    isBalanceHidden
   } = useTransactions();
 
   // Debt Form States (Add)
@@ -61,7 +62,8 @@ export function DebtsTab() {
   const [installmentAmount, setInstallmentAmount] = useState('');
   const [installmentAccountId, setInstallmentAccountId] = useState('');
 
-  const formatIDR = (num: number) => {
+  const formatIDR = (num: number, forceShow: boolean = false) => {
+    if (isBalanceHidden && !forceShow) return 'Rp ••••••••';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
   };
 
