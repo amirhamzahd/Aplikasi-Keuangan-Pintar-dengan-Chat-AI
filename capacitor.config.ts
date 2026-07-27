@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.keuanganpintar.app',
   appName: 'DIAMOND Finance AI',
   webDir: 'out',
-  bundledWebRuntime: false,
   server: {
     url: 'https://project-4vdfh.vercel.app',
     cleartext: true
