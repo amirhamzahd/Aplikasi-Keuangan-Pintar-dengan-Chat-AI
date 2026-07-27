@@ -69,16 +69,17 @@ export default function SignupPage() {
     }
   };
 
-  const handleGoogleSSO = useGoogleLogin({
-    ux_mode: 'redirect',
-    redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : 'https://project-4vdfh.vercel.app/auth/signup',
-    onSuccess: async (tokenResponse) => {
-      // Handle via redirect useEffect
-    },
-    onError: () => {
-      setError('Pendaftaran Google dibatalkan atau gagal.');
-    },
-  });
+  const handleGoogleSSO = () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      setError('Google Client ID tidak dikonfigurasi.');
+      return;
+    }
+    setIsGoogleLoading(true);
+    const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/auth/signup` : 'https://project-4vdfh.vercel.app/auth/signup';
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email profile`;
+    window.location.href = url;
+  };
 
   // Handle redirect response for Google SSO
   React.useEffect(() => {
