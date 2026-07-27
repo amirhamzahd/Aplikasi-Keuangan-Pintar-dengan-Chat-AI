@@ -33,6 +33,8 @@ jobs:
 
     - name: Sync Capacitor
       run: |
+        mkdir -p out
+        mkdir -p android/app/src/main/assets/public
         npx cap sync android
 
     - name: Build APK with Gradle
