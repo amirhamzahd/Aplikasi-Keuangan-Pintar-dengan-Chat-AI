@@ -6,7 +6,12 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     url: 'https://project-4vdfh.vercel.app',
-    cleartext: true
+    cleartext: true,
+    allowNavigation: [
+      "accounts.google.com",
+      "*.google.com",
+      "*.vercel.app"
+    ]
   },
   android: {
     allowMixedContent: true
