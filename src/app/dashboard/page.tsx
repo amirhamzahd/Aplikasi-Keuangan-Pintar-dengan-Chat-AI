@@ -49,11 +49,7 @@ export default function DashboardPage() {
   const [formError, setFormError] = useState('');
 
   if (isLoading || !user) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-slate-50">
-        <Loader2 className="animate-spin text-primary" size={36} />
-      </div>
-    );
+    return <div className="flex-1 min-h-screen bg-[#F8FAFC]" />;
   }
 
   // Strict guard: don't render dashboard if plan is NONE

@@ -19,9 +19,7 @@ export default function RootPage() {
  }
  }, [user, isLoading, router]);
 
- return (
- <div className="flex-1 flex flex-col items-center justify-center min-h-screen bg-slate-50 ">
- <Loader2 className="animate-spin text-primary" size={32} />
- </div>
- );
+  return (
+    <div className="flex-1 min-h-screen bg-[#F8FAFC]" />
+  );
 }
